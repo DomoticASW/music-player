@@ -4,24 +4,34 @@ import domain.MusicPlayerOpsImpl.MusicState
 import log.LoggerImpl.LoggerState
 import state.State
 
-trait Lifter[Small, Big]:
-  def lift[A](sa: State[Small, A]): State[Big, A]
+enum OneOf:
+  case One[S](s: S)
+  case More[S, Tail <: OneOf](s: S, tail: Tail)
 
-given liftMusic[S2]: Lifter[MusicState, (MusicState, S2)] with
-  def lift[A](sa: State[MusicState, A]): State[(MusicState, S2), A] =
-    State { case (s1, s2) =>
-      val (ns1, a) = sa.run(s1)
-      ((ns1, s2), a)
-    }
+trait Lifter[Small, Big <: OneOf]:
+  def lift[A](s: State[Small, A]): State[Big, A]
 
-given liftLogger[S1]: Lifter[LoggerState, (S1, LoggerState)] with
-  def lift[A](sa: State[LoggerState, A]): State[(S1, LoggerState), A] =
-    State { case (s1, s2) =>
-      val (ns2, a) = sa.run(s2)
-      ((s1, ns2), a)
-    }
+import OneOf.*
+given baseLifter[S]: Lifter[S, One[S]] with
+  def lift[A](sa: State[S, A]): State[One[S], A] =
+    State(one =>
+      val (newState, a) = sa.run(one.s)
+      (One(newState), a)
+    )
 
-object Lifter:
-  extension [Small, Big, A](sa: State[Small, A])
-    def autoLift(using Lifter[Small, Big]): State[Big, A] =
-      summon[Lifter[Small, Big]].lift(sa)
+given headLifter[S, Tail <: OneOf]: Lifter[S, More[S, Tail]] with
+  def lift[A](sa: State[S, A]): State[More[S, Tail], A] =
+    State(more =>
+      val (newState, a) = sa.run(more.s)
+      (More(newState, more.tail), a)
+    )
+
+given tailLifter[S, H, Tail <: OneOf](using lt: Lifter[S, Tail]): Lifter[S, More[H, Tail]] with
+  def lift[A](sa: State[S, A]): State[More[H, Tail], A] =
+    State(more =>
+      val (newTail, a) = lt.lift(sa).run(more.tail)
+      (More(more.s, newTail), a)
+    )
+
+given autoLifter[S, Big <: OneOf, A](using lifter: Lifter[S, Big]): Conversion[State[S, A], State[Big, A]] with
+    def apply(sa: State[S, A]): State[Big, A] = lifter.lift(sa)

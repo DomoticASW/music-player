@@ -3,7 +3,8 @@ package example
 import state.State
 import state.given
 import utils.given
-import utils.Lifter.*
+import utils.*
+import OneOf.*
 import domain.MusicPlayerOpsImpl.*
 import domain.MusicPlayerState.*
 import log.LoggerImpl.*
@@ -11,75 +12,79 @@ import domain.Event
 import domain.Music
 import scala.util.Random
 import domain.MusicPlayer
-
-
-type MusicLoggerState = (MusicState, LoggerState)
+import domain.GlobalState
 
 implicit class ColorString(val str: String) extends AnyVal:
   import scala.Console._
   def red = s"$RED$str$RESET"
 
-def emitEventIfPresent(e: Either[Event, Unit], ms: Int = 1000): State[LoggerState, Unit] =
+def emitEventIfPresent(e: Either[Event, Unit], ms: Int = 1000): State[GlobalState, Unit] =
   for 
     emitted <- emitEvent(e)
     _ = if emitted then Thread.sleep(ms)
   yield ()
 
-def pauseOrContinue(music: Music, t: Int, musics: Seq[Music], steps: Int, probabilityToPause: Double, probabilityToStop: Double): State[MusicLoggerState, Either[Event, Unit]] =
+def pauseOrContinue(music: Music, t: Int, musics: Seq[Music], steps: Int, probabilityToPause: Double, probabilityToStop: Double): State[GlobalState, Either[Event, Unit]] =
   for
-    _ <- log(music.name + " is at " + t + "/" + music.duration).autoLift
+    _ <- log(music.name + " is at " + t + "/" + music.duration)
     p = Random().nextDouble()
     e <-
       if p > 1 - probabilityToPause
-      then pause().autoLift
+      then pause()
       else
         for
-          e <- play().autoLift
+          e <- play()
         yield e
-    _ <- emitEventIfPresent(e).autoLift
+    _ <- emitEventIfPresent(e)
     _ = Thread.sleep(1000)
     _ <- playMusic(musics, steps, probabilityToPause, probabilityToStop)
   yield e
 
-def changeMusicAndLog(music: Music, musics: Seq[Music], steps: Int, probabilityToPause: Double, probabilityToStop: Double): State[MusicLoggerState, Either[Event, Unit]] =
+def changeMusicAndLog(music: Music, musics: Seq[Music], steps: Int, probabilityToPause: Double, probabilityToStop: Double): State[GlobalState, Either[Event, Unit]] =
   for
-    _ <- log(music.name + " just finished!\n").autoLift
+    _ <- log(music.name + " just finished!\n")
     _ = Thread.sleep(500)
     p = Random().between(0, musics.size)
-    e <- changeMusic(musics(p)).autoLift
-    _ <- emitEventIfPresent(Left(e)).autoLift
+    e <- changeMusic(musics(p))
+    _ <- emitEventIfPresent(Left(e))
     _ <- playMusic(musics, steps, probabilityToPause, probabilityToStop)
   yield Left(e)
 
-def restartingMusic(music: Music, musics: Seq[Music], steps: Int, probabilityToPause: Double, probabilityToStop: Double): State[MusicLoggerState, Either[Event, Unit]] =
+def restartingMusic(music: Music, musics: Seq[Music], steps: Int, probabilityToPause: Double, probabilityToStop: Double): State[GlobalState, Either[Event, Unit]] =
   for
-    _ <- log(music.name + " has beed paused").autoLift
-    _ <- log("Restarting in 3 seconds").autoLift
+    _ <- log(music.name + " has beed paused")
+    _ <- log("Restarting in 3 seconds")
     _ = Thread.sleep(3000)
-    _ <- log(music.name + " is now restarting!").autoLift
+    _ <- log(music.name + " is now restarting!")
     _ = Thread.sleep(500)
-    e <- play().autoLift
-    _ <- emitEventIfPresent(e).autoLift
+    e <- play()
+    _ <- emitEventIfPresent(e)
     _ <- playMusic(musics, steps, probabilityToPause, probabilityToStop)
   yield e
 
-def startMusic(musics: Seq[Music], steps: Int, probabilityToPause: Double, probabilityToStop: Double) =
+def turnOff(): State[GlobalState, Either[Event, Unit]] =
   for
-    _ <- currentState.autoLift
+    _ <- log("Music player powering off")
+    e <- stop()
+  yield e
+
+def startMusic(musics: Seq[Music], steps: Int, probabilityToPause: Double, probabilityToStop: Double): State[GlobalState, Either[Event, Unit]] =
+  for
+    _ <- currentState
     p = Random().nextDouble()
     e <-
       if p > 1 - probabilityToStop
-      then stop().autoLift
-      else play().autoLift
-    _ <- emitEventIfPresent(e).autoLift
+      then stop()
+      else play()
+    _ <- emitEventIfPresent(e)
     _ <- playMusic(musics, steps, probabilityToPause, probabilityToStop)
   yield e
 
-def playMusic(musics: Seq[Music], steps: Int, probabilityToPause: Double, probabilityToStop: Double): State[MusicLoggerState, Unit] =
+def playMusic(musics: Seq[Music], steps: Int, probabilityToPause: Double, probabilityToStop: Double): State[GlobalState, Unit] =
   for
-    e <- step(steps).autoLift
-    _ <- emitEventIfPresent(e).autoLift
-    m <- currentState.autoLift
+    e <- step(steps)
+    _ <- emitEventIfPresent(e)
+    m <- currentState
     _ <- m match
       case Playing(music, t) =>
         pauseOrContinue(music, t, musics, steps, probabilityToPause, probabilityToStop)
@@ -89,19 +94,15 @@ def playMusic(musics: Seq[Music], steps: Int, probabilityToPause: Double, probab
         else if t > 0 
           then restartingMusic(music, musics, steps, probabilityToPause, probabilityToStop)
           else startMusic(musics, steps, probabilityToPause, probabilityToStop)
-      case _ =>
-        for
-          _ <- log("Music player powering off").autoLift
-          e <- stop().autoLift
-        yield e
+      case _ => turnOff()
   yield ()
 
-def startPlayer(musics: Seq[Music], steps: Int, probabilityToPause: Double, probabilityToStop: Double) =
+def startPlayer(musics: Seq[Music], steps: Int, probabilityToPause: Double, probabilityToStop: Double): State[GlobalState, Seq[Event]] =
   for
-    event <- changeMusic(musics.head).autoLift
-    _ <- emitEventIfPresent(Left(event)).autoLift
-    e <- play().autoLift
-    _ <- emitEventIfPresent(e).autoLift
+    event <- changeMusic(musics.head)
+    _ <- emitEventIfPresent(Left(event))
+    e <- play()
+    _ <- emitEventIfPresent(e)
     _ <- playMusic(musics, steps, probabilityToPause, probabilityToStop)
-    events <- events.autoLift
+    events <- events
   yield events
