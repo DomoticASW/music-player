@@ -19,7 +19,3 @@ given liftLogger[S1]: Lifter[LoggerState, (S1, LoggerState)] with
       val (ns2, a) = sa.run(s2)
       ((s1, ns2), a)
     }
-
-extension [Small, Big](sa: State[Small, ?])
-  def autoLift(using Lifter[Small, Big]): State[Big, ?] =
-    summon[Lifter[Small, Big]].lift(sa)
