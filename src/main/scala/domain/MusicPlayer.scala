@@ -31,7 +31,6 @@ object MusicPlayer:
 trait MusicPlayerOps:
   type MusicState
   def initialState: MusicState
-  def log(msg: String): State[MusicState, Unit]
   def currentState: State[MusicState, MusicPlayerState]
   def changeMusic(music: Music): State[MusicState, Event]
   def play(): State[MusicState, Either[Event, Unit]]
@@ -48,10 +47,6 @@ object MusicPlayerOpsImpl extends MusicPlayerOps:
 
   override def currentState: State[MusicState, MusicPlayerState] =
     State(s => (s, s))
-
-  override def log(msg: String): State[MusicState, Unit] =
-    println(msg)
-    State(s => (s, ()))
 
   override def changeMusic(music: Music): State[MusicState, Event] =
     State(s => (Playing(music, 0), ChangeMusic))
