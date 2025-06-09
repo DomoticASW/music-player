@@ -13,10 +13,9 @@ import log.LoggerImpl
 import LoggerImpl.*
 import state.*
 import state.given
-
-extension [Small, Big, A](sa: State[Small, A])
-  def autoLift(using Lifter[Small, Big]): State[Big, A] =
-    summon[Lifter[Small, Big]].lift(sa)
+import utils.given
+import utils.Lifter
+import Lifter.*
 
 type MusicLoggerState = (MusicState, LoggerState)
 
