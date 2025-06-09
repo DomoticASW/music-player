@@ -6,8 +6,8 @@ import utils.Lifter
 import domain.GlobalState
 import utils.given
 
-implicit class ColorString(val str: String) extends AnyVal:
-  import scala.Console._
+import scala.Console._
+extension (str: String)
   def red = s"$RED$str$RESET"
 
 trait Logger:
