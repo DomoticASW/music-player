@@ -11,6 +11,7 @@ enum MusicPlayerState:
 
 enum Event:
   case ChangeMusic
+  case Start
   case Resume
   case Pause
   case End
@@ -49,11 +50,11 @@ object MusicPlayerOpsImpl extends MusicPlayerOps:
     State(s => (s, s))
 
   override def changeMusic(music: Music): State[MusicState, Event] =
-    State(s => (Playing(music, 0), ChangeMusic))
+    State(s => (Paused(music, 0), ChangeMusic))
 
   override def play(): State[MusicState, Either[Event, Unit]] =
     State(s => s match
-      case Paused(m, t) => (Playing(m, t), Left(Resume))
+      case Paused(m, t) => (Playing(m, t), Left(if t > 0 then Resume else Start))
       case _ => (s, Right(()))
     )
 
