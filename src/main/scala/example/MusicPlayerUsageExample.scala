@@ -7,12 +7,15 @@ import utils.*
 import OneOf.*
 import domain.MusicPlayerOpsImpl.*
 import domain.MusicPlayerState.*
+import log.LoggerImpl
 import log.LoggerImpl.*
 import domain.Event
 import domain.Music
 import scala.util.Random
 import domain.MusicPlayer
 import domain.GlobalState
+import sleep.SleeperImpl.*
+import sleep.SleeperImpl
 
 implicit class ColorString(val str: String) extends AnyVal:
   import scala.Console._
@@ -21,7 +24,7 @@ implicit class ColorString(val str: String) extends AnyVal:
 def emitEventIfPresent(e: Either[Event, Unit], ms: Int = 1000): State[GlobalState, Unit] =
   for 
     emitted <- emitEvent(e)
-    _ = if emitted then Thread.sleep(ms)
+    _ <- if emitted then SleeperImpl.wait(500) else SleeperImpl.wait(0)
   yield ()
 
 def pauseOrContinue(music: Music, t: Int, musics: Seq[Music], steps: Int, probabilityToPause: Double, probabilityToStop: Double): State[GlobalState, Either[Event, Unit]] =
@@ -36,14 +39,14 @@ def pauseOrContinue(music: Music, t: Int, musics: Seq[Music], steps: Int, probab
           e <- play()
         yield e
     _ <- emitEventIfPresent(e)
-    _ = Thread.sleep(1000)
+    _ <- SleeperImpl.wait(1000)
     _ <- playMusic(musics, steps, probabilityToPause, probabilityToStop)
   yield e
 
 def changeMusicAndLog(music: Music, musics: Seq[Music], steps: Int, probabilityToPause: Double, probabilityToStop: Double): State[GlobalState, Either[Event, Unit]] =
   for
     _ <- log(music.name + " just finished!\n")
-    _ = Thread.sleep(500)
+    _ <- SleeperImpl.wait(500)
     p = Random().between(0, musics.size)
     e <- changeMusic(musics(p))
     _ <- emitEventIfPresent(Left(e))
@@ -54,9 +57,9 @@ def restartingMusic(music: Music, musics: Seq[Music], steps: Int, probabilityToP
   for
     _ <- log(music.name + " has beed paused")
     _ <- log("Restarting in 3 seconds")
-    _ = Thread.sleep(3000)
+    _ <- SleeperImpl.wait(3000)
     _ <- log(music.name + " is now restarting!")
-    _ = Thread.sleep(500)
+    _ <- SleeperImpl.wait(500)
     e <- play()
     _ <- emitEventIfPresent(e)
     _ <- playMusic(musics, steps, probabilityToPause, probabilityToStop)
@@ -97,7 +100,7 @@ def playMusic(musics: Seq[Music], steps: Int, probabilityToPause: Double, probab
       case _ => turnOff()
   yield ()
 
-def startPlayer(musics: Seq[Music], steps: Int, probabilityToPause: Double, probabilityToStop: Double): State[GlobalState, Seq[Event]] =
+def startPlayer(musics: Seq[Music], steps: Int, probabilityToPause: Double, probabilityToStop: Double): State[GlobalState, Unit] =
   for
     event <- changeMusic(musics.head)
     _ <- emitEventIfPresent(Left(event))
@@ -105,4 +108,7 @@ def startPlayer(musics: Seq[Music], steps: Int, probabilityToPause: Double, prob
     _ <- emitEventIfPresent(e)
     _ <- playMusic(musics, steps, probabilityToPause, probabilityToStop)
     events <- events
-  yield events
+    _ <- log("Events emitted: " + events.mkString(", "))
+    timePassed <- timePassed
+    _ <- log("Time passed(ms): " + timePassed)
+  yield ()

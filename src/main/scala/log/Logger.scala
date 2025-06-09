@@ -6,7 +6,7 @@ import utils.Lifter
 import domain.GlobalState
 import utils.given
 
-import scala.Console._
+import scala.Console.*
 extension (str: String)
   def red = s"$RED$str$RESET"
 
@@ -21,13 +21,17 @@ object LoggerImpl extends Logger:
   override opaque type LoggerState = Seq[Event]
   override def initialState: LoggerState = Seq()
   override def emitEvent(e: Either[Event, Unit]): State[GlobalState, Boolean] =
-    e match
+    State[LoggerState, Boolean](s => 
+      e match
       case Left(event) =>
         println("\nevent emitted: ".red + event + "\n")
-        State[LoggerState, Boolean](s => (s :+ event, true))
-      case _ => State[LoggerState, Boolean](s => (s, false))
+        (s :+ event, true)
+      case _ => (s, false)
+    )
   override def log(msg: String): State[GlobalState, Unit] =
-    println(msg)
-    State[LoggerState, Unit](s => (s, ()))
+    State[LoggerState, Unit](s => 
+      println(msg)
+      (s, ())
+    )
   override def events: State[GlobalState, Seq[Event]] =
     State[LoggerState, Seq[Event]](s => (s, s))

@@ -24,9 +24,9 @@ def main =
   val musicPlayer = MusicPlayer("MyMusicPlayer", musics)
 
   val state = startPlayer(musics.toSeq, steps, probabilityToPause, probabilityToStop)
-  val initialState: GlobalState = More(domain.MusicPlayerOpsImpl.initialState, One(log.LoggerImpl.initialState))
+  val initialState: GlobalState = More(domain.MusicPlayerOpsImpl.initialState, More(log.LoggerImpl.initialState, One(sleep.SleeperImpl.initialState)))
 
-  val run: Runnable = () => println(state.run(initialState)._2)
+  val run: Runnable = () => state.run(initialState)
   val musicPlayerThread = new Thread(run, "musicPlayer")
   musicPlayerThread.start()
   musicPlayerThread.join()
