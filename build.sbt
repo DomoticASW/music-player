@@ -9,7 +9,7 @@ lazy val root = project
     scalaVersion := scala3Version,
     scalacOptions += "-deprecation",
 
-    Docker / packageName := "ventus218/domoticasw-music-player",
+    Docker / packageName := "corradostortini2/domoticasw-music-player",
     dockerExposedPorts += 8080,
     dockerUpdateLatest := true
   )
