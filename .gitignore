@@ -113,5 +113,8 @@ project/plugins/project/
 
 .bsp/
 .metals/
-project/
+project/.bloop/
+project/.target/
+project/project/
+project/metals.sbt
 .bloop/

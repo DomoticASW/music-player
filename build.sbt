@@ -2,11 +2,12 @@ val scala3Version = "3.7.1"
 
 lazy val root = project
   .in(file("."))
+  .enablePlugins(JavaAppPackaging, DockerPlugin)
   .settings(
     name := "music-player",
-    version := "0.1.0-SNAPSHOT",
-
+    version := sys.env.getOrElse("VERSION", "0.1.0-SNAPSHOT"),
     scalaVersion := scala3Version,
 
-    libraryDependencies += "org.scalameta" %% "munit" % "1.0.0" % Test
+    Docker / packageName := "ventus218/domoticasw-music-player",
+    dockerUpdateLatest := true
   )
