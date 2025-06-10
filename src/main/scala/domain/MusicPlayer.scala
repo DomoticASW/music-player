@@ -19,6 +19,12 @@ enum Event:
   case Pause
   case End
 
+enum Action:
+  case Play
+  case Pause
+  case ChangeMusic(m: Music)
+  case Stop
+
 trait MusicPlayer:
   def name: String
   def musics: Set[Music]
@@ -32,10 +38,7 @@ trait MusicPlayerOps:
   type MusicState
   def initialState: MusicState
   def currentState: State[GlobalState, MusicPlayerState]
-  def changeMusic(music: Music): State[GlobalState, Event]
-  def play(): State[GlobalState, Either[Event, Unit]]
-  def pause(): State[GlobalState, Either[Event, Unit]]
-  def stop(): State[GlobalState, Either[Event, Unit]]
+  def executeAction(action: Action): State[GlobalState, Either[Event, Unit]]
   def step(seconds: Int): State[GlobalState, Either[Event, Unit]]
 
 object MusicPlayerOpsImpl extends MusicPlayerOps:
@@ -49,33 +52,30 @@ object MusicPlayerOpsImpl extends MusicPlayerOps:
   override def currentState: State[GlobalState, MusicPlayerState] =
     State[MusicState, MusicPlayerState](s => (s, s))
 
-  override def changeMusic(music: Music): State[GlobalState, Event] =
-    State[MusicState, Event](s => (Paused(music, 0), ChangeMusic))
-
-  override def play(): State[GlobalState, Either[Event, Unit]] =
-    State[MusicState, Either[Event, Unit]](s => s match
-      case Paused(m, t) => (Playing(m, t), Left(if t > 0 then Resume else Start))
-      case _ => (s, Right(()))
+  override def executeAction(action: Action): State[GlobalState, Either[Event, Unit]] =
+    import Action.*
+    State[MusicState, Either[Event, Unit]](s =>
+      action match
+        case Play => s match
+          case Paused(m, t) => (Playing(m, t), Left(if t > 0 then Event.Resume else Event.Start))
+          case _ => (s, Right(()))
+        case Pause => s match
+          case Playing(m, t) => (Paused(m, t), Left(Event.Pause))
+          case _ => (s, Right(()))
+        case ChangeMusic(m) => 
+          (Paused(m, 0), Left(Event.ChangeMusic))
+        case Stop => s match
+          case Off => (Off, Right(()))
+          case _ => (Off, Left(Event.End))
     )
-
-  override def pause(): State[GlobalState, Either[Event, Unit]] =
-    State[MusicState, Either[Event, Unit]](s => s match
-      case Playing(m, t) => (Paused(m, t), Left(Pause))
-      case _ => (s, Right(()))
-    )
-
-  override def stop(): State[GlobalState, Either[Event, Unit]] =
-    State[MusicState, Either[Event, Unit]](s => s match
-      case Off => (Off, Right(()))
-      case _ => (Off, Left(End))
-    )
-
+  
   override def step(seconds: Int): State[GlobalState, Either[Event, Unit]] =
-    State[MusicState, Either[Event, Unit]](s => s match
-      case Playing(m, t) =>
-        if t + seconds >= m.duration then
-          (Paused(m, m.duration), Left(End))
-        else
-          (Playing(m, t + seconds), Right(()))
-      case _ => (s, Right(()))
+    State[MusicState, Either[Event, Unit]](s => 
+      s match
+        case Playing(m, t) =>
+          if t + seconds >= m.duration then
+            (Paused(m, m.duration), Left(Event.End))
+          else
+            (Playing(m, t + seconds), Right(()))
+        case _ => (s, Right(()))
     )

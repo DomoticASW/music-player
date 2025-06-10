@@ -6,28 +6,25 @@ import sleeper.*
 import domain.*
 import utils.OneOf.*
 
-val backInBlack = Music("Back In Black", 100)
-val dontStopBelievin = Music("Don't Stop Believin", 50)
-val pokersFace = Music("Poker's Face", 70)
-
-val musics = Set(
-  backInBlack,
-  dontStopBelievin,
-  pokersFace
+def musics = Set(
+  Music("Back In Black", 100),
+  Music("Don't Stop Believin", 50),
+  Music("Poker's Face", 70)
 )
 
-val steps = 10
-val probabilityToStop = 0.1
-val probabilityToPause = 0.2
+def steps = 1
+def probabilityToStop = 0.1
+def probabilityToPause = 0.2
+
+def musicPlayerName = "MusicPlayer"
 
 @main
 def main =
-  val musicPlayer = MusicPlayer("MyMusicPlayer", musics)
+  val musicPlayer = MusicPlayer(musicPlayerName, musics)
 
   val state = startPlayer(musics.toSeq, steps, probabilityToPause, probabilityToStop)
   val initialState: GlobalState = More(MusicPlayerOpsImpl.initialState, More(LoggerImpl.initialState, One(SleeperImpl.initialState)))
 
   val run: Runnable = () => state.run(initialState)
-  val musicPlayerThread = new Thread(run, "musicPlayer")
+  val musicPlayerThread = new Thread(run, musicPlayerName)
   musicPlayerThread.start()
-  musicPlayerThread.join()
