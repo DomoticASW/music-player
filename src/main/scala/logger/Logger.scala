@@ -9,6 +9,7 @@ import utils.given
 import scala.Console.*
 extension (str: String)
   def red = s"$RED$str$RESET"
+  def green = s"$GREEN$str$RESET"
 
 trait Logger:
   type LoggerState
@@ -24,7 +25,7 @@ object LoggerImpl extends Logger:
     State[LoggerState, Boolean](s => 
       e match
       case Left(event) =>
-        println("\nevent emitted: ".red + event + "\n")
+        println("event emitted: ".red + event.toString().green)
         (s :+ event, true)
       case _ => (s, false)
     )

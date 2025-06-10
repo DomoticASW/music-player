@@ -40,7 +40,7 @@ def pauseOrContinue(music: Music, t: Int, musics: Seq[Music], steps: Int, probab
 
 def changeMusicAndLog(music: Music, musics: Seq[Music], steps: Int, probabilityToPause: Double): State[GlobalState, Either[Event, Unit]] =
   for
-    _ <- log(music.name + " just finished!\n")
+    _ <- log("\n" + music.name + " just finished!\n")
     _ <- sleep(500)
     p = Random().between(0, musics.size)
     e <- executeAction(ChangeMusic(musics(p)))
@@ -95,7 +95,7 @@ def startPlayer(musics: Seq[Music], steps: Int, probabilityToPause: Double): Sta
     e <- executeAction(Play)
     _ <- emitEvent(e)
     _ <- sleep(secondsToMs(steps))
-    _ <- playMusic(musics, steps, probabilityToPause)
+    _ <- playMusic(musics, steps, probabilityToPause) //Infinite loop, following lines are just as an example of what can be done
     events <- events
     _ <- log("Events emitted: " + events.mkString(", "))
     timePassed <- timePassed
