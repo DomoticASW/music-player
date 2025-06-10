@@ -5,7 +5,7 @@ import state.given
 import utils.given
 import utils.*
 import OneOf.*
-import domain.MusicPlayerOpsImpl.*
+import domain.MusicPlayer.MusicPlayerOpsImpl.*
 import domain.Action.*
 import domain.MusicPlayerState.*
 import logger.LoggerImpl
@@ -90,12 +90,12 @@ def playMusic(musics: Seq[Music], steps: Int, probabilityToPause: Double): State
       case _ => startMusic(musics, steps, probabilityToPause)
   yield ()
 
-def startPlayer(musics: Seq[Music], steps: Int, probabilityToPause: Double): State[GlobalState, Unit] =
+def startPlayer(player: MusicPlayer, steps: Int, probabilityToPause: Double): State[GlobalState, Unit] =
   for
     e <- executeAction(Play)
     _ <- emitEvent(e)
     _ <- sleep(secondsToMs(steps))
-    _ <- playMusic(musics, steps, probabilityToPause) //Infinite loop, following lines are just as an example of what can be done
+    _ <- playMusic(player.musics.toSeq, steps, probabilityToPause) //Infinite loop, following lines are just as an example of what can be done
     events <- events
     _ <- log("Events emitted: " + events.mkString(", "))
     timePassed <- timePassed

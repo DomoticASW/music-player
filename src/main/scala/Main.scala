@@ -6,24 +6,65 @@ import sleeper.*
 import domain.*
 import utils.OneOf.*
 
-def musics = Set(
-  Music("Back In Black", 100),
-  Music("Don't Stop Believin", 50),
-  Music("Poker's Face", 70)
-)
+object Main extends App:
+  def musics: Either[String, Set[Music]] =
+    for
+      musicsStr <- Right(sys.env.get("MUSICS").map(_.split(",").map(_.trim()).toSet))
+      musics <- musicsStr match
+        case None => Right(Set(
+            Music("Back In Black", 100),
+            Music("Don't Stop Believin", 50),
+            Music("Poker's Face", 70)
+          ))
+        case Some(value) if value.size > 1 =>
+          val pairs = value.map(_.split("-"))
+          if pairs.find(_.length != 2).isDefined || pairs.find(!_.apply(1).toIntOption.isDefined).isDefined
+          then Left("The Musics are defined by the name and the duration (integer) separeted by a -")
+          else Right(pairs.map(p => Music(p(0), p(1).toInt)).toSet)
+        case _ => Left("At least one music should be given")
+    yield musics
 
-def steps = 1
-def probabilityToPause = 0.2
+  def steps: Either[String, Int] =
+    for
+      stepsStr <- Right(sys.env.get("STEPS"))
+      steps <- stepsStr match
+        case None => Right(1)
+        case Some(value) =>
+          value.toIntOption.toRight("Steps should be an integer")
+    yield steps
 
-def musicPlayerName = "MusicPlayer"
+  def probabilityToPause: Either[String, Double] =
+    for
+      probabilityToPauseStr <- Right(sys.env.get("PAUSE_PROBABILITY"))
+      probabilityToPause <- probabilityToPauseStr match
+        case None => Right(0.2)
+        case Some(value) =>
+          value.toDoubleOption.toRight("Steps should be a double")
+    yield probabilityToPause
 
-@main
-def main =
-  val musicPlayer = MusicPlayer(musicPlayerName, musics)
+  def musicPlayerName: Either[String, String] = Right(sys.env.get("NAME").getOrElse("MusicPlayer"))
 
-  val state = startPlayer(musics.toSeq, steps, probabilityToPause)
-  val initialState: GlobalState = More(MusicPlayerOpsImpl.initialState(musics.head), More(LoggerImpl.initialState, One(SleeperImpl.initialState)))
+  val config = for
+    name <- musicPlayerName
+    m <- musics
+    s <- steps
+    p <- probabilityToPause
+    config <- ConfigChecker(name, m, s, p).left.map(_.message)
+  yield config
 
-  val run: Runnable = () => state.run(initialState)
-  val musicPlayerThread = new Thread(run, musicPlayerName)
-  musicPlayerThread.start()
+  config match
+    case Left(err: String) =>
+      Console.err.println(err)
+      sys.exit(1)
+    case Right(config) =>
+      val name = config.name
+      val m = config.musics
+      val s = config.steps
+      val p = config.p
+
+      val player = MusicPlayer(name, m)
+      val initialState: GlobalState = More(player.initialState, More(LoggerImpl.initialState, One(SleeperImpl.initialState)))
+      val state = startPlayer(player, s, p)
+      val run: Runnable = () => state.run(initialState)
+      val musicPlayerThread = new Thread(run, player.name)
+      musicPlayerThread.start()

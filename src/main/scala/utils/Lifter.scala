@@ -1,6 +1,6 @@
 package utils
 
-import domain.MusicPlayerOpsImpl.MusicState
+import domain.MusicPlayer.MusicPlayerOpsImpl.MusicState
 import logger.LoggerImpl.LoggerState
 import state.State
 
