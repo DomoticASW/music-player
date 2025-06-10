@@ -25,7 +25,7 @@ implicit class ColorString(val str: String) extends AnyVal:
   import scala.Console._
   def red = s"$RED$str$RESET"
 
-def pauseOrContinue(music: Music, t: Int, musics: Seq[Music], steps: Int, probabilityToPause: Double, probabilityToStop: Double): State[GlobalState, Either[Event, Unit]] =
+def pauseOrContinue(music: Music, t: Int, musics: Seq[Music], steps: Int, probabilityToPause: Double): State[GlobalState, Either[Event, Unit]] =
   for
     _ <- log(music.name + " is at " + t + "/" + music.duration)
     p = Random().nextDouble()
@@ -35,20 +35,20 @@ def pauseOrContinue(music: Music, t: Int, musics: Seq[Music], steps: Int, probab
       else executeAction(Play)
     _ <- emitEvent(e)
     _ <- sleep(secondsToMs(steps))
-    _ <- playMusic(musics, steps, probabilityToPause, probabilityToStop)
+    _ <- playMusic(musics, steps, probabilityToPause)
   yield e
 
-def changeMusicAndLog(music: Music, musics: Seq[Music], steps: Int, probabilityToPause: Double, probabilityToStop: Double): State[GlobalState, Either[Event, Unit]] =
+def changeMusicAndLog(music: Music, musics: Seq[Music], steps: Int, probabilityToPause: Double): State[GlobalState, Either[Event, Unit]] =
   for
     _ <- log(music.name + " just finished!\n")
     _ <- sleep(500)
     p = Random().between(0, musics.size)
     e <- executeAction(ChangeMusic(musics(p)))
     _ <- emitEvent(e)
-    _ <- playMusic(musics, steps, probabilityToPause, probabilityToStop)
+    _ <- playMusic(musics, steps, probabilityToPause)
   yield e
 
-def restartingMusic(music: Music, musics: Seq[Music], steps: Int, probabilityToPause: Double, probabilityToStop: Double): State[GlobalState, Either[Event, Unit]] =
+def restartingMusic(music: Music, musics: Seq[Music], steps: Int, probabilityToPause: Double): State[GlobalState, Either[Event, Unit]] =
   for
     _ <- log(music.name + " has beed paused")
     _ <- log("Restarting in 3 seconds")
@@ -57,7 +57,7 @@ def restartingMusic(music: Music, musics: Seq[Music], steps: Int, probabilityToP
     e <- executeAction(Play)
     _ <- emitEvent(e)
     _ <- sleep(secondsToMs(steps))
-    _ <- playMusic(musics, steps, probabilityToPause, probabilityToStop)
+    _ <- playMusic(musics, steps, probabilityToPause)
   yield e
 
 def turnOff(): State[GlobalState, Either[Event, Unit]] =
@@ -66,44 +66,36 @@ def turnOff(): State[GlobalState, Either[Event, Unit]] =
     e <- executeAction(Stop)
   yield e
 
-def startMusic(musics: Seq[Music], steps: Int, probabilityToPause: Double, probabilityToStop: Double): State[GlobalState, Either[Event, Unit]] =
+def startMusic(musics: Seq[Music], steps: Int, probabilityToPause: Double): State[GlobalState, Either[Event, Unit]] =
   for
-    _ <- currentState
-    p = Random().nextDouble()
-    e <-
-      if p > 1 - probabilityToStop
-      then executeAction(Stop)
-      else executeAction(Play)
-    _ <- emitEvent(e)
+    _ <- executeAction(Play)
     _ <- sleep(secondsToMs(steps))
-    _ <- playMusic(musics, steps, probabilityToPause, probabilityToStop)
-  yield e
+    _ <- playMusic(musics, steps, probabilityToPause)
+  yield Right(())
 
-def playMusic(musics: Seq[Music], steps: Int, probabilityToPause: Double, probabilityToStop: Double): State[GlobalState, Unit] =
+def playMusic(musics: Seq[Music], steps: Int, probabilityToPause: Double): State[GlobalState, Unit] =
   for
     e <- step(steps)
     _ <- emitEvent(e)
     m <- currentState
+    p = Random().nextDouble()
     _ <- m match
       case Playing(music, t) =>
-        pauseOrContinue(music, t, musics, steps, probabilityToPause, probabilityToStop)
+        pauseOrContinue(music, t, musics, steps, probabilityToPause)
       case Paused(music, t) =>
         if t >= music.duration then
-          changeMusicAndLog(music, musics, steps, probabilityToPause, probabilityToStop)
-        else if t > 0 
-          then restartingMusic(music, musics, steps, probabilityToPause, probabilityToStop)
-          else startMusic(musics, steps, probabilityToPause, probabilityToStop)
-      case _ => turnOff()
+          changeMusicAndLog(music, musics, steps, probabilityToPause)
+        else
+          restartingMusic(music, musics, steps, probabilityToPause)
+      case _ => startMusic(musics, steps, probabilityToPause)
   yield ()
 
-def startPlayer(musics: Seq[Music], steps: Int, probabilityToPause: Double, probabilityToStop: Double): State[GlobalState, Unit] =
+def startPlayer(musics: Seq[Music], steps: Int, probabilityToPause: Double): State[GlobalState, Unit] =
   for
-    event <- executeAction(ChangeMusic(musics.head))
-    _ <- emitEvent(event)
     e <- executeAction(Play)
     _ <- emitEvent(e)
     _ <- sleep(secondsToMs(steps))
-    _ <- playMusic(musics, steps, probabilityToPause, probabilityToStop)
+    _ <- playMusic(musics, steps, probabilityToPause)
     events <- events
     _ <- log("Events emitted: " + events.mkString(", "))
     timePassed <- timePassed

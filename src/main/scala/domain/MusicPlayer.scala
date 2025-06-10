@@ -10,7 +10,7 @@ import utils.OneOf
 enum MusicPlayerState:
   case Playing(m: Music, currentTime: Int)
   case Paused(m: Music, currentTime: Int)
-  case Off
+  case Off(m: Music)
 
 enum Event:
   case ChangeMusic
@@ -36,7 +36,7 @@ object MusicPlayer:
 
 trait MusicPlayerOps:
   type MusicState
-  def initialState: MusicState
+  def initialState(m: Music): MusicState
   def currentState: State[GlobalState, MusicPlayerState]
   def executeAction(action: Action): State[GlobalState, Either[Event, Unit]]
   def step(seconds: Int): State[GlobalState, Either[Event, Unit]]
@@ -47,7 +47,7 @@ object MusicPlayerOpsImpl extends MusicPlayerOps:
 
   override opaque type MusicState = MusicPlayerState
 
-  override def initialState: MusicState = Off
+  override def initialState(m: Music): MusicState = Off(m)
 
   override def currentState: State[GlobalState, MusicPlayerState] =
     State[MusicState, MusicPlayerState](s => (s, s))
@@ -63,7 +63,8 @@ object MusicPlayerOpsImpl extends MusicPlayerOps:
     )
 
   private def play(s: MusicPlayerState) = s match
-    case Paused(m, t) => (Playing(m, t), Left(if t > 0 then Event.Resume else Event.Start))
+    case Paused(m, t) => (Playing(m, t), Left(Event.Resume))
+    case Off(m) => (Playing(m, 0), Left(Event.Start))
     case _ => (s, Right(()))
 
   private def pause(s: MusicPlayerState) = s match
@@ -71,11 +72,12 @@ object MusicPlayerOpsImpl extends MusicPlayerOps:
     case _ => (s, Right(()))
 
   private def changeMusic(m: Music) =
-    (Paused(m, 0), Left(Event.ChangeMusic))
+    (Off(m), Left(Event.ChangeMusic))
 
   private def stop(s: MusicPlayerState) = s match
-    case Off => (Off, Right(()))
-    case _ => (Off, Left(Event.End))
+    case Playing(m, _) => (Off(m), Left(Event.End))
+    case Paused(m, _) => (Off(m), Left(Event.End))
+    case _ => (s, Right(()))
   
   override def step(seconds: Int): State[GlobalState, Either[Event, Unit]] =
     State[MusicState, Either[Event, Unit]](s => 

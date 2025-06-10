@@ -13,7 +13,6 @@ def musics = Set(
 )
 
 def steps = 1
-def probabilityToStop = 0.1
 def probabilityToPause = 0.2
 
 def musicPlayerName = "MusicPlayer"
@@ -22,8 +21,8 @@ def musicPlayerName = "MusicPlayer"
 def main =
   val musicPlayer = MusicPlayer(musicPlayerName, musics)
 
-  val state = startPlayer(musics.toSeq, steps, probabilityToPause, probabilityToStop)
-  val initialState: GlobalState = More(MusicPlayerOpsImpl.initialState, More(LoggerImpl.initialState, One(SleeperImpl.initialState)))
+  val state = startPlayer(musics.toSeq, steps, probabilityToPause)
+  val initialState: GlobalState = More(MusicPlayerOpsImpl.initialState(musics.head), More(LoggerImpl.initialState, One(SleeperImpl.initialState)))
 
   val run: Runnable = () => state.run(initialState)
   val musicPlayerThread = new Thread(run, musicPlayerName)
