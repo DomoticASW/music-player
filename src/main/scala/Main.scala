@@ -1,9 +1,10 @@
 import domain.Music
 import domain.MusicPlayer
 import example.startPlayer
-import log.LoggerImpl
+import logger.* 
+import sleeper.*
+import domain.*
 import utils.OneOf.*
-import domain.GlobalState
 
 val backInBlack = Music("Back In Black", 100)
 val dontStopBelievin = Music("Don't Stop Believin", 50)
@@ -24,7 +25,7 @@ def main =
   val musicPlayer = MusicPlayer("MyMusicPlayer", musics)
 
   val state = startPlayer(musics.toSeq, steps, probabilityToPause, probabilityToStop)
-  val initialState: GlobalState = More(domain.MusicPlayerOpsImpl.initialState, More(log.LoggerImpl.initialState, One(sleep.SleeperImpl.initialState)))
+  val initialState: GlobalState = More(MusicPlayerOpsImpl.initialState, More(LoggerImpl.initialState, One(SleeperImpl.initialState)))
 
   val run: Runnable = () => state.run(initialState)
   val musicPlayerThread = new Thread(run, "musicPlayer")

@@ -1,7 +1,7 @@
 package utils
 
 import domain.MusicPlayerOpsImpl.MusicState
-import log.LoggerImpl.LoggerState
+import logger.LoggerImpl.LoggerState
 import state.State
 
 enum OneOf:

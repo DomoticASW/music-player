@@ -7,15 +7,15 @@ import utils.*
 import OneOf.*
 import domain.MusicPlayerOpsImpl.*
 import domain.MusicPlayerState.*
-import log.LoggerImpl
-import log.LoggerImpl.*
+import logger.LoggerImpl
+import logger.LoggerImpl.*
 import domain.Event
 import domain.Music
 import scala.util.Random
 import domain.MusicPlayer
 import domain.GlobalState
-import sleep.SleeperImpl.*
-import sleep.SleeperImpl
+import sleeper.SleeperImpl.*
+import sleeper.SleeperImpl
 
 implicit class ColorString(val str: String) extends AnyVal:
   import scala.Console._

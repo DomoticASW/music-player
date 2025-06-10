@@ -1,4 +1,4 @@
-package sleep
+package sleeper
 
 import state.*
 import domain.GlobalState

@@ -1,4 +1,4 @@
-package log
+package logger
 
 import state.State
 import domain.Event
