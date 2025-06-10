@@ -33,14 +33,7 @@ object Main extends App:
           value.toIntOption.toRight("Steps should be an integer")
     yield steps
 
-  def probabilityToPause: Either[String, Double] =
-    for
-      probabilityToPauseStr <- Right(sys.env.get("PAUSE_PROBABILITY"))
-      probabilityToPause <- probabilityToPauseStr match
-        case None => Right(0.2)
-        case Some(value) =>
-          value.toDoubleOption.toRight("Steps should be a double")
-    yield probabilityToPause
+  def probabilityToPause = 0.2
 
   def musicPlayerName: Either[String, String] = Right(sys.env.get("NAME").getOrElse("Music player"))
 
@@ -48,8 +41,7 @@ object Main extends App:
     name <- musicPlayerName
     m <- musics
     s <- steps
-    p <- probabilityToPause
-    config <- ConfigChecker(name, m, s, p).left.map(_.message)
+    config <- ConfigChecker(name, m, s).left.map(_.message)
   yield config
 
   config match
@@ -60,11 +52,10 @@ object Main extends App:
       val name = config.name
       val m = config.musics
       val s = config.steps
-      val p = config.p
 
       val player = MusicPlayer(name, m)
       val initialState: GlobalState = More(player.initialState, More(LoggerImpl.initialState, One(SleeperImpl.initialState)))
-      val state = startPlayer(player, s, p)
+      val state = startPlayer(player, s, probabilityToPause)
       val run: Runnable = () => state.run(initialState)
       val musicPlayerThread = new Thread(run, player.name)
       musicPlayerThread.start()
