@@ -92,6 +92,9 @@ def playMusic(musics: Seq[Music], steps: Int, probabilityToPause: Double): State
 
 def startPlayer(player: MusicPlayer, steps: Int, probabilityToPause: Double): State[GlobalState, Unit] =
   for
+    _ <- log(player.name.toUpperCase())
+    _ <- log("Available musics: " + player.musics.map(_.name).mkString(", "))
+    _ <- log("\nStarting now!")
     e <- executeAction(Play)
     _ <- emitEvent(e)
     _ <- sleep(secondsToMs(steps))

@@ -42,7 +42,7 @@ object Main extends App:
           value.toDoubleOption.toRight("Steps should be a double")
     yield probabilityToPause
 
-  def musicPlayerName: Either[String, String] = Right(sys.env.get("NAME").getOrElse("MusicPlayer"))
+  def musicPlayerName: Either[String, String] = Right(sys.env.get("NAME").getOrElse("Music player"))
 
   val config = for
     name <- musicPlayerName
