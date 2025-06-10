@@ -56,18 +56,26 @@ object MusicPlayerOpsImpl extends MusicPlayerOps:
     import Action.*
     State[MusicState, Either[Event, Unit]](s =>
       action match
-        case Play => s match
-          case Paused(m, t) => (Playing(m, t), Left(if t > 0 then Event.Resume else Event.Start))
-          case _ => (s, Right(()))
-        case Pause => s match
-          case Playing(m, t) => (Paused(m, t), Left(Event.Pause))
-          case _ => (s, Right(()))
-        case ChangeMusic(m) => 
-          (Paused(m, 0), Left(Event.ChangeMusic))
-        case Stop => s match
-          case Off => (Off, Right(()))
-          case _ => (Off, Left(Event.End))
+        case Play => play(s)
+        case Pause => pause(s)
+        case ChangeMusic(m) => changeMusic(m)
+        case Stop => stop(s)
     )
+
+  private def play(s: MusicPlayerState) = s match
+    case Paused(m, t) => (Playing(m, t), Left(if t > 0 then Event.Resume else Event.Start))
+    case _ => (s, Right(()))
+
+  private def pause(s: MusicPlayerState) = s match
+    case Playing(m, t) => (Paused(m, t), Left(Event.Pause))
+    case _ => (s, Right(()))
+
+  private def changeMusic(m: Music) =
+    (Paused(m, 0), Left(Event.ChangeMusic))
+
+  private def stop(s: MusicPlayerState) = s match
+    case Off => (Off, Right(()))
+    case _ => (Off, Left(Event.End))
   
   override def step(seconds: Int): State[GlobalState, Either[Event, Unit]] =
     State[MusicState, Either[Event, Unit]](s => 
