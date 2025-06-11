@@ -28,15 +28,16 @@ enum Action:
 
 trait MusicPlayer:
   def name: String
+  def steps: Int
   def musics: Set[Music]
   def initialState: MusicState
 
 object MusicPlayer:
-  private case class MusicPlayerImpl(name: String, musics: Set[Music]) extends MusicPlayer:
+  private case class MusicPlayerImpl(name: String, musics: Set[Music], steps: Int) extends MusicPlayer:
     override def initialState: MusicState = MusicPlayerOpsImpl.initialState(musics.head)
 
-  def apply(name: String, musics: Set[Music]): MusicPlayer =
-    MusicPlayerImpl(name = name, musics = musics)
+  def apply(name: String, musics: Set[Music], steps: Int): MusicPlayer =
+    MusicPlayerImpl(name = name, musics = musics, steps = steps)
 
   trait MusicPlayerOps:
     type MusicState

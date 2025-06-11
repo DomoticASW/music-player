@@ -55,12 +55,8 @@ object Main extends App:
       val m = config.musics
       val s = config.steps
 
-      val player = MusicPlayer(name, m)
-      val initialState: GlobalState = More(player.initialState, More(LoggerImpl.initialState, One(SleeperImpl.initialState)))
-      val state = startPlayer(player, s, probabilityToPause)
-      val run: Runnable = () => state.run(initialState)
-      val musicPlayerThread = new Thread(run, player.name)
-      musicPlayerThread.start()
+      val player = MusicPlayer(name, m, s)
+      val playerAgent = MusicPlayerAgent(player, 50)
+      playerAgent.start()
 
       given ActorSystem[Any] = ActorSystem(Behaviors.empty, "system")
-

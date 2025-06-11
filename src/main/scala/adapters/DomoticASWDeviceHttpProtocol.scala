@@ -13,6 +13,7 @@ import spray.json.DefaultJsonProtocol.{*, given}
 import spray.json.*
 import java.util.UUID
 import domoticasw.DomoticASW.*
+import domain.MusicPlayerAgent
 
 object DomoticASWDeviceHttpInterface:
   import Marshalling.given
@@ -20,7 +21,12 @@ object DomoticASWDeviceHttpInterface:
   case class NotFound(message: String)
   case class ExecuteActionBody(input: Option[String])
 
-  //TODO
+  def badActionIdMessage(action: String) =
+    s"Action \"$action\" not found, known actions are [\"changeMusic\", \"setMusicProgress\", \"play\", \"pause\", \"stop\"]"
+
+  def apply(host: String, port: Int, roombaAgent: MusicPlayerAgent)(
+    using a: ActorSystem[Any]
+  ): Future[ServerBinding] = ???
 
   object Marshalling:
     val registerJSONExample = """
