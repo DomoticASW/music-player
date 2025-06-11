@@ -4,8 +4,12 @@ import state.State
 import state.given
 import utils.Lifter
 import utils.given
-import utils.OneOf
-import domain.MusicPlayer.MusicPlayerOpsImpl.MusicState
+import utils.OneOf.*
+import logger.LoggerImpl
+import sleeper.SleeperImpl
+import logger.LoggerImpl.LoggerState
+import sleeper.SleeperImpl.SleeperState
+import domain.MusicPlayer.MusicPlayerOpsImpl.GlobalState
 
 enum MusicPlayerState:
   case Playing(m: Music, currentTime: Int)
@@ -30,17 +34,23 @@ trait MusicPlayer:
   def name: String
   def steps: Int
   def musics: Set[Music]
-  def initialState: MusicState
+  def initialState: GlobalState
+  def withNewState(m: GlobalState): MusicPlayer
 
 object MusicPlayer:
   private case class MusicPlayerImpl(name: String, musics: Set[Music], steps: Int) extends MusicPlayer:
-    override def initialState: MusicState = MusicPlayerOpsImpl.initialState(musics.head)
+    var initialState: GlobalState = MusicPlayerOpsImpl.initialState(musics.head)
+
+    override def withNewState(m: GlobalState): MusicPlayer = 
+      val copy = this.copy()
+      copy.initialState = m
+      copy
 
   def apply(name: String, musics: Set[Music], steps: Int): MusicPlayer =
     MusicPlayerImpl(name = name, musics = musics, steps = steps)
 
   trait MusicPlayerOps:
-    type MusicState
+    type GlobalState
     def currentState: State[GlobalState, MusicPlayerState]
     def executeAction(action: Action): State[GlobalState, Either[Event, Unit]]
     def step(seconds: Int): State[GlobalState, Either[Event, Unit]]
@@ -49,9 +59,10 @@ object MusicPlayer:
     import MusicPlayerState.*
     import Event.*
 
-    override opaque type MusicState = MusicPlayerState
+    opaque type MusicState = MusicPlayerState
+    override type GlobalState = More[MusicState, More[LoggerState, One[SleeperState]]]
 
-    private[MusicPlayer] def initialState(m: Music): MusicState = Off(m)
+    private[MusicPlayer] def initialState(m: Music): GlobalState = More(Off(m), More(LoggerImpl.initialState, One(SleeperImpl.initialState)))
 
     override def currentState: State[GlobalState, MusicPlayerState] =
       State[MusicState, MusicPlayerState](s => (s, s))

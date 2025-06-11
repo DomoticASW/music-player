@@ -14,6 +14,11 @@ import spray.json.*
 import java.util.UUID
 import domoticasw.DomoticASW.*
 import domain.MusicPlayerAgent
+import domain.Action
+import Action.*
+import domain.MusicPlayerState.*
+import domain.Event
+import utils.OneOf.More
 
 object DomoticASWDeviceHttpInterface:
   import Marshalling.given
@@ -24,9 +29,119 @@ object DomoticASWDeviceHttpInterface:
   def badActionIdMessage(action: String) =
     s"Action \"$action\" not found, known actions are [\"changeMusic\", \"setMusicProgress\", \"play\", \"pause\", \"stop\"]"
 
-  def apply(host: String, port: Int, roombaAgent: MusicPlayerAgent)(
+  def apply(host: String, port: Int, musicPlayerAgent: MusicPlayerAgent)(
     using a: ActorSystem[Any]
-  ): Future[ServerBinding] = ???
+  ): Future[ServerBinding] =
+    Http()
+      .newServerAt(host, port)
+      .bind:
+        concat(
+          (path("execute" / Segment) & entity(as[ExecuteActionBody])):
+            (segment, body) =>
+              val action: Either[BadRequest, Action] = segment match
+                case "play" => Right(Play)
+                case "pause" => Right(Pause)
+                case "stop" => Right(Stop)
+                case "change-music" =>
+                  body.input match
+                    case Some(value) if musicPlayerAgent.musicPlayer.musics.find(_.name == value).isDefined =>
+                      Right(ChangeMusic(musicPlayerAgent.musicPlayer.musics.find(_.name == value).get))
+                    case _ => Left(BadRequest("The music chosen does not exists"))
+                case "set-music-progress" =>
+                  body.input match
+                    case Some(value) if value.toIntOption.isDefined => Right(ChangeTime(value.toInt))
+                    case _ => Left(BadRequest("The new music progress should exists if trying to change the old one"))
+              
+              post:
+                action match
+                  case Left(err) => 
+                    complete(StatusCodes.BadRequest, err)
+                  case Right(value) =>
+                    musicPlayerAgent.enqueAction(value)
+                    complete(StatusCodes.OK)
+          ,
+          (path("register") & post):
+            complete(StatusCodes.OK, musicPlayerRegistration(musicPlayerAgent))
+        )
+
+  def musicPlayerRegistration(a: MusicPlayerAgent) = DeviceRegistration(
+    UUID.randomUUID().toString(),
+    a.musicPlayer.name,
+    Seq(
+      DeviceProperty.WithTypeConstraint(
+        "state",
+        "Music state",
+        a.musicPlayer.initialState.toString(),
+        TypeConstraints.Enum(Set("Playing", "Paused", "Off"))
+      ),
+      DeviceProperty.WithSetter(
+        "musics",
+        "Musics",
+        a.musicPlayer.initialState match
+          case More(s, tail) => s match
+            case Off(m) => m.name
+            case Playing(m, _) => m.name
+            case Paused(m, _) => m.name
+        ,
+        "change-music"
+      ),
+      DeviceProperty.WithTypeConstraint(
+        "minutes",
+        "Minutes",
+        a.musicPlayer.initialState match
+          case More(s, tail) => s match
+            case Playing(_, t) => t.toString()
+            case Paused(_, t) => t.toString()
+            case _ => "00:00/00:00"
+        ,
+        TypeConstraints.None(Type.String)
+      ),
+      DeviceProperty.WithSetter(
+        "music-progress",
+        "Music progress",
+        a.musicPlayer.initialState match
+          case More(s, tail) => s match
+            case Playing(m, t) => (t / m.duration.toDouble * 100).toInt
+            case Paused(m, t) => (t / m.duration.toDouble * 100).toInt
+            case _ => 0
+        ,
+        "set-music-progress"
+      )
+    ),
+    Seq(
+      DeviceAction(
+        "change-music",
+        "Change music",
+        Some("Change the music to play"),
+        TypeConstraints.Enum(a.musicPlayer.musics.map(_.name))
+      ),
+      DeviceAction(
+        "set-music-progress",
+        "Set music progress",
+        None,
+        TypeConstraints.IntRange(0, 100)
+      ),
+      DeviceAction(
+        "play",
+        "Play",
+        None,
+        TypeConstraints.None(Type.Void)
+      ),
+      DeviceAction(
+        "pause",
+        "Pause",
+        None,
+        TypeConstraints.None(Type.Void)
+      ),
+      DeviceAction(
+        "stop",
+        "Stop",
+        None,
+        TypeConstraints.None(Type.Void)
+      )
+    ),
+    Event.values.toIndexedSeq.map(_.toString())
+  )
 
   object Marshalling:
     val registerJSONExample = """
@@ -40,7 +155,7 @@ object DomoticASWDeviceHttpInterface:
           "value": "Off",
           "typeConstraints": {
             "constraint": "Enum",
-            "values": ["Off", "Playing", "Paused"]
+            "values": ["Playing", "Paused", "Off"]
           }
         },
         {
@@ -69,7 +184,7 @@ object DomoticASWDeviceHttpInterface:
         {
           "id": "changeMusic",
           "name": "Change Music",
-          "description": "The music will change to the selected music, putting the music player Off",
+          "description": "Change the music to play",
           "inputTypeConstraints": {
             "constraint": "Enum",
             "values": ["Back In Black", "Don't Stop Believin", "Poker's Face"]

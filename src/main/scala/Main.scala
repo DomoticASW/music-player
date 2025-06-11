@@ -7,6 +7,7 @@ import domain.*
 import utils.OneOf.*
 import org.apache.pekko.actor.typed.ActorSystem
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
+import adapters.DomoticASWDeviceHttpInterface
 
 object Main extends App:
   def musics: Either[String, Set[Music]] =
@@ -60,3 +61,4 @@ object Main extends App:
       playerAgent.start()
 
       given ActorSystem[Any] = ActorSystem(Behaviors.empty, "system")
+      DomoticASWDeviceHttpInterface("0.0.0.0", 8080, playerAgent)

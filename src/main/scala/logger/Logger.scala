@@ -3,7 +3,7 @@ package logger
 import state.State
 import domain.Event
 import utils.Lifter
-import domain.GlobalState
+import domain.MusicPlayer.MusicPlayerOpsImpl.GlobalState
 import utils.given
 
 import scala.Console.*
@@ -22,7 +22,7 @@ object LoggerImpl extends Logger:
   override opaque type LoggerState = Seq[Event]
   override def initialState: LoggerState = Seq()
   override def emitEvent(e: Either[Event, Unit]): State[GlobalState, Boolean] =
-    State[LoggerState, Boolean](s => 
+    State[LoggerState, Boolean](s =>
       e match
       case Left(event) =>
         println("event emitted: ".red + event.toString().green)

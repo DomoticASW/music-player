@@ -10,19 +10,16 @@ import logger.LoggerImpl
 import sleeper.SleeperImpl
 
 /** @param musicPlayer
-  *   The music player state
+  *   The music player
   * @param periodMs
   *   It is suggested to choose a period which is less than the MEST (Minimum
   *   Event Separation Time)
   */
-class MusicPlayerAgent(private val musicPlayer: MusicPlayer, periodMs: Long) extends Thread:
+class MusicPlayerAgent(private var _musicPlayer: MusicPlayer, periodMs: Long) extends Thread:
 
+  def musicPlayer = _musicPlayer
+  def musicPlayer_=(m: MusicPlayer) = _musicPlayer = m
   val steps = musicPlayer.steps
-
-  var _previousState: GlobalState = More(musicPlayer.initialState, More(LoggerImpl.initialState, One(SleeperImpl.initialState)))
-
-  def previousState: GlobalState = _previousState
-  def previousState_=(newState: GlobalState) = _previousState = newState
 
   private var actions: Seq[Action] = Seq()
 
@@ -50,8 +47,8 @@ class MusicPlayerAgent(private val musicPlayer: MusicPlayer, periodMs: Long) ext
       val state = actions match
         case h :: t => executeAction(h)
         case Nil => step(periodMs.toInt)
-      val (newState, e) = state.run(previousState)
-      previousState = newState
+      val (newState, e) = state.run(musicPlayer.initialState)
+      musicPlayer = musicPlayer.withNewState(newState)
       e match
         case Left(event) => ()
         case Right(_) => ()

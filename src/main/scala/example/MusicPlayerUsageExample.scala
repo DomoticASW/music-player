@@ -14,7 +14,6 @@ import domain.Event
 import domain.Music
 import scala.util.Random
 import domain.MusicPlayer
-import domain.GlobalState
 import sleeper.SleeperImpl
 import SleeperImpl.sleep
 import SleeperImpl.timePassed

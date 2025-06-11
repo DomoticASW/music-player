@@ -1,7 +1,7 @@
 package sleeper
 
 import state.*
-import domain.GlobalState
+import domain.MusicPlayer.MusicPlayerOpsImpl.GlobalState
 import utils.given
 
 trait Sleeper:
