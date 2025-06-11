@@ -9,6 +9,7 @@ import OneOf.*
 import logger.LoggerImpl
 import sleeper.SleeperImpl
 import domain.MusicPlayer.MusicPlayerOpsImpl.currentState
+import domain.MusicPlayer.MusicPlayerOpsImpl.toMs
 
 /** @param musicPlayer
   *   The music player
@@ -49,7 +50,7 @@ class MusicPlayerAgent(private var _musicPlayer: MusicPlayer, periodMs: Long) ex
         case h :: t => executeAction(h)
         case Nil =>
           for 
-            e <- step(periodMs.toInt)
+            e <- step(periodMs.toMs)
             s <- currentState
             _ <- LoggerImpl.log(s.toString())
           yield e

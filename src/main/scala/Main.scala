@@ -1,6 +1,5 @@
 import domain.Music
 import domain.MusicPlayer
-import example.startPlayer
 import logger.* 
 import sleeper.*
 import domain.*
@@ -27,13 +26,13 @@ object Main extends App:
         case _ => Left("At least one music should be given")
     yield musics
 
-  def steps: Either[String, Int] =
+  def steps: Either[String, Long] =
     for
       stepsStr <- Right(sys.env.get("STEPS"))
       steps <- stepsStr match
-        case None => Right(1000)
+        case None => Right(1000l)
         case Some(value) =>
-          value.toIntOption.toRight("Steps should be an integer")
+          value.toLongOption.toRight("Steps should be an integer")
     yield steps
 
   def probabilityToPause = 0.2

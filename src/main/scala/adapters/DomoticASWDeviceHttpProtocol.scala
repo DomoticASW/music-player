@@ -49,7 +49,10 @@ object DomoticASWDeviceHttpInterface:
                     case _ => Left(BadRequest("The music chosen does not exists"))
                 case "set-music-progress" =>
                   body.input match
-                    case Some(value) if value.toIntOption.isDefined => Right(ChangeTime(value.toInt))
+                    case Some(value) if value.toIntOption.isDefined => 
+                      value.toInt match
+                        case x if x > 100 || x < 0 => Left(BadRequest("The music progress must be between 0 and 100"))
+                        case _ => Right(ChangeTime(value.toInt))
                     case _ => Left(BadRequest("The new music progress should exists if trying to change the old one"))
               
               post:
@@ -101,8 +104,8 @@ object DomoticASWDeviceHttpInterface:
         "Music progress",
         a.musicPlayer.initialState match
           case More(s, tail) => s match
-            case Playing(m, t) => (t / m.duration.toDouble * 100).toInt
-            case Paused(m, t) => (t / m.duration.toDouble * 100).toInt
+            case Playing(m, t) => (t.toSeconds.toInt / m.duration.toDouble * 100).toInt
+            case Paused(m, t) => (t.toSeconds.toInt / m.duration.toDouble * 100).toInt
             case _ => 0
         ,
         "set-music-progress"
