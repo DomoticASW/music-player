@@ -18,8 +18,6 @@ import sleeper.SleeperImpl
 import SleeperImpl.sleep
 import SleeperImpl.timePassed
 
-def secondsToMs(seconds: Int) = seconds * 1000
-
 implicit class ColorString(val str: String) extends AnyVal:
   import scala.Console._
   def red = s"$RED$str$RESET"
@@ -33,7 +31,7 @@ def pauseOrContinue(music: Music, t: Int, player: MusicPlayer, probabilityToPaus
       then executeAction(Pause)
       else executeAction(Play)
     _ <- emitEvent(e)
-    _ <- sleep(secondsToMs(player.steps))
+    _ <- sleep(player.steps)
     _ <- playMusic(player, probabilityToPause)
   yield e
 
@@ -45,7 +43,7 @@ def changeMusicAndLog(music: Music, player: MusicPlayer, probabilityToPause: Dou
     e <- executeAction(ChangeMusic(player.musics.toSeq(p)))
     _ <- emitEvent(e)
     _ <- executeAction(Play)
-    _ <- sleep(secondsToMs(player.steps))
+    _ <- sleep(player.steps)
     _ <- playMusic(player, probabilityToPause)
   yield e
 
@@ -53,11 +51,11 @@ def restartingMusic(music: Music, player: MusicPlayer, probabilityToPause: Doubl
   for
     _ <- log(music.name + " has beed paused")
     _ <- log("Restarting in 3 seconds")
-    _ <- sleep(secondsToMs(3))
+    _ <- sleep(3)
     _ <- log(music.name + " is now restarting!")
     e <- executeAction(Play)
     _ <- emitEvent(e)
-    _ <- sleep(secondsToMs(player.steps))
+    _ <- sleep(player.steps)
     _ <- playMusic(player, probabilityToPause)
   yield e
 
@@ -70,7 +68,7 @@ def turnOff(): State[GlobalState, Either[Event, Unit]] =
 def startMusic(player: MusicPlayer, probabilityToPause: Double): State[GlobalState, Either[Event, Unit]] =
   for
     _ <- executeAction(Play)
-    _ <- sleep(secondsToMs(player.steps))
+    _ <- sleep(player.steps)
     _ <- playMusic(player, probabilityToPause)
   yield Right(())
 
@@ -98,7 +96,7 @@ def startPlayer(player: MusicPlayer, probabilityToPause: Double): State[GlobalSt
     _ <- log("\nStarting now!")
     e <- executeAction(Play)
     _ <- emitEvent(e)
-    _ <- sleep(secondsToMs(player.steps))
+    _ <- sleep(player.steps)
     _ <- playMusic(player, probabilityToPause) //Infinite loop, following lines are just as an example of what can be done
     events <- events
     _ <- log("Events emitted: " + events.mkString(", "))

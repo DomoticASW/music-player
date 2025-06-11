@@ -102,13 +102,13 @@ object MusicPlayer:
       case Paused(m, _) => (Off(m), Left(Event.End))
       case _ => (s, Right(()))
     
-    override def step(seconds: Int): State[GlobalState, Either[Event, Unit]] =
+    override def step(ms: Int): State[GlobalState, Either[Event, Unit]] =
       State[MusicState, Either[Event, Unit]](s => 
         s match
           case Playing(m, t) =>
-            if t + seconds >= m.duration then
+            if t + ms >= m.duration * 1000 then
               (Paused(m, m.duration), Left(Event.End))
             else
-              (Playing(m, t + seconds), Right(()))
+              (Playing(m, t + ms), Right(()))
           case _ => (s, Right(()))
       )

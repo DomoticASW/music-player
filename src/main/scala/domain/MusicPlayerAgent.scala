@@ -8,6 +8,7 @@ import utils.OneOf
 import OneOf.*
 import logger.LoggerImpl
 import sleeper.SleeperImpl
+import domain.MusicPlayer.MusicPlayerOpsImpl.currentState
 
 /** @param musicPlayer
   *   The music player
@@ -46,7 +47,12 @@ class MusicPlayerAgent(private var _musicPlayer: MusicPlayer, periodMs: Long) ex
       val actions = takeActions()
       val state = actions match
         case h :: t => executeAction(h)
-        case Nil => step(periodMs.toInt)
+        case Nil =>
+          for 
+            e <- step(periodMs.toInt)
+            s <- currentState
+            _ <- LoggerImpl.log(s.toString())
+          yield e
       val (newState, e) = state.run(musicPlayer.initialState)
       musicPlayer = musicPlayer.withNewState(newState)
       e match

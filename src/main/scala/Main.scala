@@ -31,7 +31,7 @@ object Main extends App:
     for
       stepsStr <- Right(sys.env.get("STEPS"))
       steps <- stepsStr match
-        case None => Right(1)
+        case None => Right(1000)
         case Some(value) =>
           value.toIntOption.toRight("Steps should be an integer")
     yield steps
