@@ -5,6 +5,8 @@ import logger.*
 import sleeper.*
 import domain.*
 import utils.OneOf.*
+import org.apache.pekko.actor.typed.ActorSystem
+import org.apache.pekko.actor.typed.scaladsl.Behaviors
 
 object Main extends App:
   def musics: Either[String, Set[Music]] =
@@ -12,9 +14,9 @@ object Main extends App:
       musicsStr <- Right(sys.env.get("MUSICS").map(_.split(",").map(_.trim()).toSet))
       musics <- musicsStr match
         case None => Right(Set(
-            Music("Back In Black", 100),
-            Music("Don't Stop Believin", 50),
-            Music("Poker's Face", 70)
+            Music("Back In Black", 10),
+            Music("Don't Stop Believin", 5),
+            Music("Poker's Face", 7)
           ))
         case Some(value) if value.size > 1 =>
           val pairs = value.map(_.split("-"))
@@ -59,3 +61,6 @@ object Main extends App:
       val run: Runnable = () => state.run(initialState)
       val musicPlayerThread = new Thread(run, player.name)
       musicPlayerThread.start()
+
+      given ActorSystem[Any] = ActorSystem(Behaviors.empty, "system")
+

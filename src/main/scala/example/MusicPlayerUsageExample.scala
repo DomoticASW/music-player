@@ -27,7 +27,7 @@ implicit class ColorString(val str: String) extends AnyVal:
 
 def pauseOrContinue(music: Music, t: Int, musics: Seq[Music], steps: Int, probabilityToPause: Double): State[GlobalState, Either[Event, Unit]] =
   for
-    _ <- log(music.name + " is at " + t + "/" + music.duration)
+    _ <- log(music.name + " is at " + ((t / music.duration.toDouble) * 100).toInt + "%")
     p = Random().nextDouble()
     e <-
       if p > 1 - probabilityToPause
@@ -45,6 +45,8 @@ def changeMusicAndLog(music: Music, musics: Seq[Music], steps: Int, probabilityT
     p = Random().between(0, musics.size)
     e <- executeAction(ChangeMusic(musics(p)))
     _ <- emitEvent(e)
+    _ <- executeAction(Play)
+    _ <- sleep(secondsToMs(steps))
     _ <- playMusic(musics, steps, probabilityToPause)
   yield e
 

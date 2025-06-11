@@ -23,6 +23,7 @@ enum Action:
   case Play
   case Pause
   case ChangeMusic(m: Music)
+  case ChangeTime(t: Int)
   case Stop
 
 trait MusicPlayer:
@@ -60,7 +61,8 @@ object MusicPlayer:
         action match
           case Play => play(s)
           case Pause => pause(s)
-          case ChangeMusic(m) => changeMusic(m)
+          case ChangeMusic(m) => changeMusic(s, m)
+          case ChangeTime(t) => changeTime(s, t)
           case Stop => stop(s)
       )
 
@@ -73,8 +75,15 @@ object MusicPlayer:
       case Playing(m, t) => (Paused(m, t), Left(Event.Pause))
       case _ => (s, Right(()))
 
-    private def changeMusic(m: Music) =
-      (Off(m), Left(Event.ChangeMusic))
+    private def changeMusic(s: MusicPlayerState, m: Music) = s match
+      case Playing(_, _) => (Playing(m, 0), Left(Event.ChangeMusic))
+      case Paused(_, _) => (Paused(m, 0), Left(Event.ChangeMusic))
+      case Off(_) => (Off(m), Left(Event.ChangeMusic))
+
+    private def changeTime(s: MusicPlayerState, t: Int) = s match
+      case Playing(m, _) => (Playing(m, t), Right(()))
+      case Paused(m, _) => (Paused(m, t), Right(()))
+      case _ => (s, Right(()))
 
     private def stop(s: MusicPlayerState) = s match
       case Playing(m, _) => (Off(m), Left(Event.End))
