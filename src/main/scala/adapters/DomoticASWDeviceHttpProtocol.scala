@@ -19,15 +19,19 @@ import Action.*
 import domain.MusicPlayerState.*
 import domain.Event
 import utils.OneOf.More
+import adapters.DomoticASWDeviceHttpInterface.ServerPort
 
 object DomoticASWDeviceHttpInterface:
   import Marshalling.given
   case class BadRequest(message: String)
   case class NotFound(message: String)
   case class ExecuteActionBody(input: Option[String])
+  case class ServerPort(port: Int)
 
   def badActionIdMessage(action: String) =
     s"Action \"$action\" not found, known actions are [\"changeMusic\", \"setMusicProgress\", \"play\", \"pause\", \"stop\"]"
+
+  var serverPort = 0
 
   def apply(host: String, port: Int, musicPlayerAgent: MusicPlayerAgent)(
     using a: ActorSystem[Any]
@@ -46,7 +50,7 @@ object DomoticASWDeviceHttpInterface:
                   body.input match
                     case Some(value) if musicPlayerAgent.musicPlayer.musics.find(_.name == value).isDefined =>
                       Right(ChangeMusic(musicPlayerAgent.musicPlayer.musics.find(_.name == value).get))
-                    case _ => Left(BadRequest("The music chosen does not exists"))
+                    case _ => Left(BadRequest("The chosen music does not exists"))
                 case "set-music-progress" =>
                   body.input match
                     case Some(value) if value.toIntOption.isDefined => 
@@ -63,8 +67,12 @@ object DomoticASWDeviceHttpInterface:
                     musicPlayerAgent.enqueAction(value)
                     complete(StatusCodes.OK)
           ,
-          (path("register") & post):
-            complete(StatusCodes.OK, musicPlayerRegistration(musicPlayerAgent))
+          (path("register") & entity(as[ServerPort])):
+            body =>
+              serverPort = body.port
+              // It could set the port to the musicPlayerAgent.server, then if the port is set it will send the infos to the server otherwise it won't
+            post:
+              complete(StatusCodes.OK, musicPlayerRegistration(musicPlayerAgent))
         )
 
   def musicPlayerRegistration(a: MusicPlayerAgent) = DeviceRegistration(
@@ -237,6 +245,7 @@ object DomoticASWDeviceHttpInterface:
     given RootJsonFormat[BadRequest] = jsonFormat1(BadRequest.apply)
     given RootJsonFormat[NotFound] = jsonFormat1(NotFound.apply)
     given RootJsonFormat[ExecuteActionBody] = jsonFormat1(ExecuteActionBody.apply)
+    given RootJsonFormat[ServerPort] = jsonFormat1(ServerPort.apply)
 
     given RootJsonFormat[Color] = jsonFormat3(Color.apply)
     given RootJsonFormat[Type] = new RootJsonFormat {
