@@ -10,6 +10,7 @@ import logger.LoggerImpl
 import sleeper.SleeperImpl
 import domain.MusicPlayer.MusicPlayerOpsImpl.currentState
 import domain.MusicPlayer.MusicPlayerOpsImpl.toMs
+import ports.Server
 
 /** @param musicPlayer
   *   The music player
@@ -39,12 +40,15 @@ class MusicPlayerAgent(private var _musicPlayer: MusicPlayer, periodMs: Long) ex
   private def shouldStop: Boolean = synchronized { _shouldStop }
   def setShouldStop(): Unit = synchronized { _shouldStop = true }
 
+  private var timePassed: Long = 0
+
   //TODO: Send state to server when time passed == steps
   //TODO: Send event to server when e is Left(event)
   override def run(): Unit =
     import Action.*
     while !shouldStop do
       Thread.sleep(periodMs)
+      timePassed = timePassed + periodMs
       val actions = takeActions()
       val state = actions match
         case h :: t => executeAction(h)
@@ -57,5 +61,10 @@ class MusicPlayerAgent(private var _musicPlayer: MusicPlayer, periodMs: Long) ex
       val (newState, e) = state.run(musicPlayer.initialState)
       musicPlayer = musicPlayer.withNewState(newState)
       e match
-        case Left(event) => ()
+        case Left(event) => () //this.server.sendEvent(e)
         case Right(_) => ()
+
+      if timePassed >= musicPlayer.steps
+      then
+        timePassed = 0
+        // this.server.updateState(newState.s)
