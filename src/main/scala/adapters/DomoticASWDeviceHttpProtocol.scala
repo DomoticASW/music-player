@@ -20,6 +20,8 @@ import domain.MusicPlayerState.*
 import domain.Event
 import utils.OneOf.More
 import adapters.DomoticASWDeviceHttpInterface.ServerPort
+import org.apache.pekko.stream.scaladsl.Sink
+import ports.ServerComunicationProtocol.ServerAddress
 
 object DomoticASWDeviceHttpInterface:
   import Marshalling.given
@@ -31,49 +33,52 @@ object DomoticASWDeviceHttpInterface:
   def badActionIdMessage(action: String) =
     s"Action \"$action\" not found, known actions are [\"changeMusic\", \"setMusicProgress\", \"play\", \"pause\", \"stop\"]"
 
-  var serverPort = 0
-
   def apply(host: String, port: Int, musicPlayerAgent: MusicPlayerAgent)(
     using a: ActorSystem[Any]
   ): Future[ServerBinding] =
     Http()
       .newServerAt(host, port)
-      .bind:
-        concat(
-          (path("execute" / Segment) & entity(as[ExecuteActionBody])):
-            (segment, body) =>
-              val action: Either[BadRequest, Action] = segment match
-                case "play" => Right(Play)
-                case "pause" => Right(Pause)
-                case "stop" => Right(Stop)
-                case "change-music" =>
-                  body.input match
-                    case Some(value) if musicPlayerAgent.musicPlayer.musics.find(_.name == value).isDefined =>
-                      Right(ChangeMusic(musicPlayerAgent.musicPlayer.musics.find(_.name == value).get))
-                    case _ => Left(BadRequest("The chosen music does not exists"))
-                case "set-music-progress" =>
-                  body.input match
-                    case Some(value) if value.toIntOption.isDefined => 
-                      value.toInt match
-                        case x if x > 100 || x < 0 => Left(BadRequest("The music progress must be between 0 and 100"))
-                        case _ => Right(ChangeTime(value.toInt))
-                    case _ => Left(BadRequest("The new music progress should exists if trying to change the old one"))
-              
-              post:
-                action match
-                  case Left(err) => 
-                    complete(StatusCodes.BadRequest, err)
-                  case Right(value) =>
-                    musicPlayerAgent.enqueAction(value)
-                    complete(StatusCodes.OK)
-          ,
-          (path("register") & entity(as[ServerPort])):
-            body =>
-              serverPort = body.port
-              // It could set the port to the musicPlayerAgent.server, then if the port is set it will send the infos to the server otherwise it won't
-            post:
-              complete(StatusCodes.OK, musicPlayerRegistration(musicPlayerAgent))
-        )
+      .connectionSource()
+      .to {
+        Sink foreach: conn =>
+          val clientAddress = conn.remoteAddress
+          conn.handleWithAsyncHandler:
+            concat(
+              (path("execute" / Segment) & entity(as[ExecuteActionBody])):
+                (segment, body) =>
+                  val action: Either[BadRequest, Action] = segment match
+                    case "play" => Right(Play)
+                    case "pause" => Right(Pause)
+                    case "stop" => Right(Stop)
+                    case "change-music" =>
+                      body.input match
+                        case Some(value) if musicPlayerAgent.musicPlayer.musics.find(_.name == value).isDefined =>
+                          Right(ChangeMusic(musicPlayerAgent.musicPlayer.musics.find(_.name == value).get))
+                        case _ => Left(BadRequest("The chosen music does not exists"))
+                    case "set-music-progress" =>
+                      body.input match
+                        case Some(value) if value.toIntOption.isDefined => 
+                          value.toInt match
+                            case x if x > 100 || x < 0 => Left(BadRequest("The music progress must be between 0 and 100"))
+                            case _ => Right(ChangeTime(value.toInt))
+                        case _ => Left(BadRequest("The new music progress should exists if trying to change the old one"))
+                  
+                  post:
+                    action match
+                      case Left(err) => 
+                        complete(StatusCodes.BadRequest, err)
+                      case Right(value) =>
+                        musicPlayerAgent.enqueAction(value)
+                        complete(StatusCodes.OK)
+              ,
+              (path("register") & entity(as[ServerPort]) & post): body =>
+                musicPlayerAgent.registerToServer(ServerAddress(clientAddress.getHostName(), body.port))
+                complete(StatusCodes.OK, musicPlayerRegistration(musicPlayerAgent))
+              ,
+              path("check-status"):
+                complete(StatusCodes.OK)
+            )
+      }.run()
 
   def musicPlayerRegistration(a: MusicPlayerAgent) = DeviceRegistration(
     UUID.randomUUID().toString(),

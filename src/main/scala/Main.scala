@@ -7,6 +7,8 @@ import utils.OneOf.*
 import org.apache.pekko.actor.typed.ActorSystem
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
 import adapters.DomoticASWDeviceHttpInterface
+import scala.concurrent.ExecutionContext
+import adapters.ServerComunicationProtocolHttpAdapter
 
 object Main extends App:
   def musics: Either[String, Set[Music]] =
@@ -55,8 +57,9 @@ object Main extends App:
       val m = config.musics
       val s = config.steps
 
+      val ec = ExecutionContext.global
       val player = MusicPlayer(name, m, s)
-      val playerAgent = MusicPlayerAgent(player, 50)
+      val playerAgent = MusicPlayerAgent(new ServerComunicationProtocolHttpAdapter(using ec), player, 50)
       playerAgent.start()
 
       given ActorSystem[Any] = ActorSystem(Behaviors.empty, "system")

@@ -10,7 +10,7 @@ import logger.LoggerImpl
 import sleeper.SleeperImpl
 import domain.MusicPlayer.MusicPlayerOpsImpl.currentState
 import domain.MusicPlayer.MusicPlayerOpsImpl.toMs
-import ports.Server
+import ports.ServerComunicationProtocol.*
 
 /** @param musicPlayer
   *   The music player
@@ -18,7 +18,7 @@ import ports.Server
   *   It is suggested to choose a period which is less than the MEST (Minimum
   *   Event Separation Time)
   */
-class MusicPlayerAgent(private var _musicPlayer: MusicPlayer, periodMs: Long) extends Thread:
+class MusicPlayerAgent(serverProtocol: ServerComunicationProtocol, private var _musicPlayer: MusicPlayer, periodMs: Long) extends Thread:
 
   def musicPlayer = _musicPlayer
   def musicPlayer_=(m: MusicPlayer) = _musicPlayer = m
@@ -36,14 +36,21 @@ class MusicPlayerAgent(private var _musicPlayer: MusicPlayer, periodMs: Long) ex
       actions = Seq()
       res
 
+  private var serverAddress: Option[ServerAddress] = None
+
+  /** Once registered to a server the agent will send it's state once every
+    * `periodMs`
+    */
+  def registerToServer(serverAddress: ServerAddress): Unit =
+    synchronized:
+      this.serverAddress = Some(serverAddress)
+
   private var _shouldStop = false
   private def shouldStop: Boolean = synchronized { _shouldStop }
   def setShouldStop(): Unit = synchronized { _shouldStop = true }
 
   private var timePassed: Long = 0
 
-  //TODO: Send state to server when time passed == steps
-  //TODO: Send event to server when e is Left(event)
   override def run(): Unit =
     import Action.*
     while !shouldStop do
@@ -61,10 +68,10 @@ class MusicPlayerAgent(private var _musicPlayer: MusicPlayer, periodMs: Long) ex
       val (newState, e) = state.run(musicPlayer.initialState)
       musicPlayer = musicPlayer.withNewState(newState)
       e match
-        case Left(event) => () //this.server.sendEvent(e)
+        case Left(event) => this.serverAddress.foreach(this.serverProtocol.sendEvent(_, event))
         case Right(_) => ()
 
       if timePassed >= musicPlayer.steps
       then
         timePassed = 0
-        // this.server.updateState(newState.s)
+        this.serverAddress.foreach(this.serverProtocol.updateState(_, newState.s))
