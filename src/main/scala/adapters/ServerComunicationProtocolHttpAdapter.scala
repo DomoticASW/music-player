@@ -19,6 +19,7 @@ import domain.MusicPlayerState.Paused
 import domain.MusicPlayerState.Off
 import domain.MusicPlayer.MusicPlayerOpsImpl.Milliseconds
 import domain.MusicPlayer.MusicPlayerOpsImpl.toMs
+import spray.json.RootJsonFormat
 
 class ServerComunicationProtocolHttpAdapter(id: String)(using ExecutionContext) extends ServerComunicationProtocol:
   given Writer[Color] = Writer.derived
@@ -33,9 +34,15 @@ class ServerComunicationProtocolHttpAdapter(id: String)(using ExecutionContext) 
         case obj: Int    => out.visitInt32(obj, -1)
         case obj: String => out.visitString(obj, -1)
 
+  import spray.json.DefaultJsonProtocol.{*, given}
+
   case class UpdatePropertyItem(
       propertyId: String,
       value: DomoticASW.ActualTypes
+  ) derives Writer
+
+  case class EventItem(
+    event: String
   ) derives Writer
 
   case class MusicPlayerState(
@@ -63,7 +70,7 @@ class ServerComunicationProtocolHttpAdapter(id: String)(using ExecutionContext) 
         uri"http://${address.host}:${address.port}/api/devices/${this.id}/events"
       )
       .contentType(MediaType.ApplicationJson)
-      .body(write("{ \"event\": " + "\""+ e.toString() + "\""))
+      .body(write(EventItem(e.toString())))
       .send(DefaultFutureBackend())
       .recoverWith(err =>
         Console.err.println(err)
