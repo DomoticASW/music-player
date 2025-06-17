@@ -9,6 +9,7 @@ import org.apache.pekko.actor.typed.scaladsl.Behaviors
 import adapters.DomoticASWDeviceHttpInterface
 import scala.concurrent.ExecutionContext
 import adapters.ServerComunicationProtocolHttpAdapter
+import ports.ServerComunicationProtocol.ServerAddress
 
 object Main extends App:
   def musics: Either[String, Set[Music]] =
@@ -40,7 +41,22 @@ object Main extends App:
   object isInt:
     def unapply(s: String): Option[Int] = s.toIntOption
 
-  def parsePort(default: Int): Either[String, Int] =
+  def serverAddress(
+      default: Option[ServerAddress]
+  ): Either[String, Option[ServerAddress]] =
+    def stringToServerAddress(s: String): Either[String, ServerAddress] =
+      s.split(":").toList match
+        case host :: (isInt(port) :: next) => Right(ServerAddress(host, port))
+        case _ => Left(s"Invalid server address \"$s\"")
+
+    for
+      serverAddressStr <- Right(sys.env.get("SERVER_ADDRESS"))
+      serverAddress <- serverAddressStr match
+        case Some(value) => stringToServerAddress(value).map(Some(_))
+        case None        => Right(default)
+    yield (serverAddress)
+
+  def port(default: Int): Either[String, Int] =
     sys.env.get("PORT") match
       case None                                  => Right(default)
       case Some(isInt(p)) if p >= 0 & p <= 65335 => Right(p)
@@ -57,14 +73,16 @@ object Main extends App:
     name <- musicPlayerName
     m <- musics
     s <- steps
+    port <- port(default = 8080)
+    serverAddress <- serverAddress(default = None)
     config <- ConfigChecker(id, name, m, s).left.map(_.message)
-  yield config
+  yield (config, port, serverAddress)
 
   config match
     case Left(err: String) =>
       Console.err.println(err)
       sys.exit(1)
-    case Right(config) =>
+    case Right((config, port, serverAddress)) =>
       val id = config.id
       val name = config.name
       val m = config.musics
@@ -73,7 +91,8 @@ object Main extends App:
       val ec = ExecutionContext.global
       val player = MusicPlayer(id, name, m, s)
       val playerAgent = MusicPlayerAgent(new ServerComunicationProtocolHttpAdapter(id)(using ec), player, 50)
+      serverAddress.foreach(playerAgent.registerToServer(_))
       playerAgent.start()
 
       given ActorSystem[Any] = ActorSystem(Behaviors.empty, "system")
-      DomoticASWDeviceHttpInterface("0.0.0.0", 8080, playerAgent)
+      DomoticASWDeviceHttpInterface("0.0.0.0", port, playerAgent)
