@@ -19,7 +19,6 @@ import Action.*
 import domain.MusicPlayerState.*
 import domain.Event
 import utils.OneOf.More
-import adapters.DomoticASWDeviceHttpInterface.ServerPort
 import org.apache.pekko.stream.scaladsl.Sink
 import ports.ServerComunicationProtocol.ServerAddress
 
@@ -28,7 +27,7 @@ object DomoticASWDeviceHttpInterface:
   case class BadRequest(message: String)
   case class NotFound(message: String)
   case class ExecuteActionBody(input: Option[String])
-  case class ServerPort(port: Int)
+  case class RegisterBody(serverPort: Int)
 
   def badActionIdMessage(action: String) =
     s"Action \"$action\" not found, known actions are [\"changeMusic\", \"setMusicProgress\", \"play\", \"pause\", \"stop\"]"
@@ -71,17 +70,19 @@ object DomoticASWDeviceHttpInterface:
                         musicPlayerAgent.enqueAction(value)
                         complete(StatusCodes.OK)
               ,
-              (path("register") & entity(as[ServerPort]) & post): body =>
-                musicPlayerAgent.registerToServer(ServerAddress(clientAddress.getHostName(), body.port))
+              (path("register") & entity(as[RegisterBody]) & post): body =>
+                musicPlayerAgent.registerToServer(ServerAddress(clientAddress.getHostName(), body.serverPort))
+                println(musicPlayerRegistration(musicPlayerAgent).toJson)
                 complete(StatusCodes.OK, musicPlayerRegistration(musicPlayerAgent))
               ,
               path("check-status"):
                 complete(StatusCodes.OK)
             )
-      }.run()
+      }
+    .run()
 
   def musicPlayerRegistration(a: MusicPlayerAgent) = DeviceRegistration(
-    UUID.randomUUID().toString(),
+    a.musicPlayer.id,
     a.musicPlayer.name,
     Seq(
       DeviceProperty.WithTypeConstraint(
@@ -160,97 +161,11 @@ object DomoticASWDeviceHttpInterface:
   )
 
   object Marshalling:
-    val registerJSONExample = """
-    {
-      "id": "128012392139102822"
-      "name": "Music Player"
-      "properties": [
-        {
-          "id": "state",
-          "name": "Music state",
-          "value": "Off",
-          "typeConstraints": {
-            "constraint": "Enum",
-            "values": ["Playing", "Paused", "Off"]
-          }
-        },
-        {
-          "id": "musics",
-          "name": "Selected music",
-          "value": "Back In Black",
-          "setterActionId": "changeMusic"
-        },
-        {
-          "id": "minutes",
-          "name": "Minutes",
-          "value": "0:0/0:0",
-          "typeConstraints": {
-            "type": "String",
-            "constraint": None
-          }
-        },
-        {
-          "id": "musicProgress",
-          "name": "Music progress",
-          "value": 0,
-          "setterActionId": "setMusicProgress"
-        }
-      ]
-      "actions": [
-        {
-          "id": "changeMusic",
-          "name": "Change Music",
-          "description": "Change the music to play",
-          "inputTypeConstraints": {
-            "constraint": "Enum",
-            "values": ["Back In Black", "Don't Stop Believin", "Poker's Face"]
-          }
-        },
-        {
-          "id": "setMusicProgress",
-          "name": "Set music progress",
-          "description": None,
-          "inputTypeConstraints": {
-            "constraint": "IntRange",
-            "min": 0,
-            "max": 100
-          }
-        },
-        {
-          "id": "play",
-          "name": "Play",
-          "description": "The music player will play the music",
-          "inputTypeConstraints": {
-            "type": "Void",
-            "constraint": "None"
-          }
-        },
-        {
-          "id": "pause",
-          "name": "Pause",
-          "description": "The music player will pause the music",
-          "inputTypeConstraints": {
-            "type": "Void",
-            "constraint": "None"
-          }
-        },
-        {
-          "id": "stop",
-          "name": "Stop",
-          "description": "The music player will stop the music",
-          "inputTypeConstraints": {
-            "type": "Void",
-            "constraint": "None"
-          }
-        }
-      ]
-      "events": ["change-music", "start", "resume", "pause", "end"]
-    }"""
     import DomoticASWDeviceHttpInterface.*
     given RootJsonFormat[BadRequest] = jsonFormat1(BadRequest.apply)
     given RootJsonFormat[NotFound] = jsonFormat1(NotFound.apply)
     given RootJsonFormat[ExecuteActionBody] = jsonFormat1(ExecuteActionBody.apply)
-    given RootJsonFormat[ServerPort] = jsonFormat1(ServerPort.apply)
+    given RootJsonFormat[RegisterBody] = jsonFormat1(RegisterBody.apply)
 
     given RootJsonFormat[Color] = jsonFormat3(Color.apply)
     given RootJsonFormat[Type] = new RootJsonFormat {
