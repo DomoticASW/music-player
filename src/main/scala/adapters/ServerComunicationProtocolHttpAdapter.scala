@@ -55,7 +55,22 @@ class ServerComunicationProtocolHttpAdapter(id: String)(using ExecutionContext) 
 
   private def stateFromMusicAndCurrentTime(s: domain.MusicPlayerState, m: Music, t: Milliseconds) =
     MusicPlayerState(s, m, musicMinutes(m, t), musicProgress(m, t))
-  override def sendEvent(address: ServerAddress, e: Event): Future[Unit] = ???
+
+  override def sendEvent(address: ServerAddress, e: Event): Future[Unit] = 
+    quickRequest
+      .httpVersion(HttpVersion.HTTP_1_1)
+      .patch(
+        uri"http://${address.host}:${address.port}/api/devices/${this.id}/events"
+      )
+      .contentType(MediaType.ApplicationJson)
+      .body(write("{ \"event\": " + "\""+ e.toString() + "\""))
+      .send(DefaultFutureBackend())
+      .recoverWith(err =>
+        Console.err.println(err)
+        Future.failed(err)
+      )
+      .map(_ => ())
+
   override def updateState(address: ServerAddress, state: MusicState): Future[Unit] =
     val currentState = state match
       case s @ Playing(m, t) => stateFromMusicAndCurrentTime(s, m, t)
@@ -70,7 +85,7 @@ class ServerComunicationProtocolHttpAdapter(id: String)(using ExecutionContext) 
           UpdatePropertyItem("state", currentState.state.toString()),
           UpdatePropertyItem("musics", currentState.music.toString()),
           UpdatePropertyItem("minutes", currentState.minutes),
-          UpdatePropertyItem("music-progress", currentState.musicProgress.toString()),
+          UpdatePropertyItem("music-progress", currentState.musicProgress),
         )
 
         quickRequest
