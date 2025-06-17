@@ -106,9 +106,9 @@ object DomoticASWDeviceHttpInterface:
         "Minutes",
         a.musicPlayer.initialState match
           case More(s, tail) => s match
-            case Playing(_, t) => t.toString()
-            case Paused(_, t) => t.toString()
-            case _ => "00:00/00:00"
+            case Playing(m, t) => t.toSeconds.toString() + "/" + m.duration
+            case Paused(m, t) => t.toSeconds.toString() + "/" + m.duration
+            case Off(m) => "00:00/" + m.duration
         ,
         TypeConstraints.None(Type.String)
       ),

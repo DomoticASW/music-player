@@ -37,15 +37,27 @@ object Main extends App:
           value.toLongOption.toRight("Steps should be an integer")
     yield steps
 
+  object isInt:
+    def unapply(s: String): Option[Int] = s.toIntOption
+
+  def parsePort(default: Int): Either[String, Int] =
+    sys.env.get("PORT") match
+      case None                                  => Right(default)
+      case Some(isInt(p)) if p >= 0 & p <= 65335 => Right(p)
+      case Some(isInt(p)) => Left(s"Invalid port $p is out of valid port range")
+      case Some(nonInt)   => Left(s"Invalid port $nonInt is not an integer")
+
   def probabilityToPause = 0.2
 
+  def id: Either[String, String] = Right(sys.env.get("ID").getOrElse("Music-player"))
   def musicPlayerName: Either[String, String] = Right(sys.env.get("NAME").getOrElse("Music player"))
 
   val config = for
+    id <- id
     name <- musicPlayerName
     m <- musics
     s <- steps
-    config <- ConfigChecker(name, m, s).left.map(_.message)
+    config <- ConfigChecker(id, name, m, s).left.map(_.message)
   yield config
 
   config match
@@ -53,13 +65,14 @@ object Main extends App:
       Console.err.println(err)
       sys.exit(1)
     case Right(config) =>
+      val id = config.id
       val name = config.name
       val m = config.musics
       val s = config.steps
 
       val ec = ExecutionContext.global
-      val player = MusicPlayer(name, m, s)
-      val playerAgent = MusicPlayerAgent(new ServerComunicationProtocolHttpAdapter(using ec), player, 50)
+      val player = MusicPlayer(id, name, m, s)
+      val playerAgent = MusicPlayerAgent(new ServerComunicationProtocolHttpAdapter(id)(using ec), player, 50)
       playerAgent.start()
 
       given ActorSystem[Any] = ActorSystem(Behaviors.empty, "system")
