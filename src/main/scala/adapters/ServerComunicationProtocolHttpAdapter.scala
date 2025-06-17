@@ -46,8 +46,8 @@ class ServerComunicationProtocolHttpAdapter(id: String)(using ExecutionContext) 
   ) derives Writer
 
   case class MusicPlayerState(
-    state: domain.MusicPlayerState,
-    music: Music,
+    state: String,
+    music: String,
     minutes: String,
     musicProgress: Int
   )
@@ -60,10 +60,11 @@ class ServerComunicationProtocolHttpAdapter(id: String)(using ExecutionContext) 
   private def musicMinutes(m: Music, t: Milliseconds) =
     t.toSeconds.toString() + "/" + m.duration
 
-  private def stateFromMusicAndCurrentTime(s: domain.MusicPlayerState, m: Music, t: Milliseconds) =
-    MusicPlayerState(s, m, musicMinutes(m, t), musicProgress(m, t))
+  private def stateFromMusicAndCurrentTime(s: String, m: Music, t: Milliseconds) =
+    MusicPlayerState(s.toString(), m.name, musicMinutes(m, t), musicProgress(m, t))
 
-  override def sendEvent(address: ServerAddress, e: Event): Future[Unit] = 
+  override def sendEvent(address: ServerAddress, e: Event): Future[Unit] =
+    println(write(EventItem(e.toString())))
     quickRequest
       .httpVersion(HttpVersion.HTTP_1_1)
       .patch(
@@ -80,9 +81,9 @@ class ServerComunicationProtocolHttpAdapter(id: String)(using ExecutionContext) 
 
   override def updateState(address: ServerAddress, state: MusicState): Future[Unit] =
     val currentState = state match
-      case s @ Playing(m, t) => stateFromMusicAndCurrentTime(s, m, t)
-      case s @ Paused(m, t) => stateFromMusicAndCurrentTime(s, m, t)
-      case s @ Off(m) => stateFromMusicAndCurrentTime(s, m, 0.toMs)
+      case Playing(m, t) => stateFromMusicAndCurrentTime("Playing", m, t)
+      case Paused(m, t) => stateFromMusicAndCurrentTime("Paused", m, t)
+      case Off(m) => stateFromMusicAndCurrentTime("Off", m, 0.toMs)
 
     prevState match
       case Some(prev) if prev == currentState => Future(())

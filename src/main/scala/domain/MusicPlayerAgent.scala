@@ -59,12 +59,7 @@ class MusicPlayerAgent(serverProtocol: ServerComunicationProtocol, private var _
       val actions = takeActions()
       val state = actions match
         case h :: t => executeAction(h)
-        case Nil =>
-          for 
-            e <- step(periodMs.toMs)
-            s <- currentState
-            _ <- LoggerImpl.log(s.toString())
-          yield e
+        case Nil => step(periodMs.toMs)
       val (newState, e) = state.run(musicPlayer.initialState)
       musicPlayer = musicPlayer.withNewState(newState)
       e match
