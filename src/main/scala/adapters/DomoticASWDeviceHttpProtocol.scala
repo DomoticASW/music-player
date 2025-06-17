@@ -21,6 +21,8 @@ import domain.Event
 import utils.OneOf.More
 import org.apache.pekko.stream.scaladsl.Sink
 import ports.ServerComunicationProtocol.ServerAddress
+import domain.MusicPlayer.MusicPlayerOpsImpl.toMin
+import domain.MusicPlayer.MusicPlayerOpsImpl.toSeconds
 
 object DomoticASWDeviceHttpInterface:
   import Marshalling.given
@@ -88,7 +90,12 @@ object DomoticASWDeviceHttpInterface:
       DeviceProperty.WithTypeConstraint(
         "state",
         "Music state",
-        a.musicPlayer.initialState.toString(),
+        a.musicPlayer.initialState match
+          case More(s, tail) => s match
+            case Off => "Off"
+            case Playing => "Playing"
+            case Paused => "Paused"
+        ,
         TypeConstraints.Enum(Set("Playing", "Paused", "Off"))
       ),
       DeviceProperty.WithSetter(
@@ -107,9 +114,9 @@ object DomoticASWDeviceHttpInterface:
         "Minutes",
         a.musicPlayer.initialState match
           case More(s, tail) => s match
-            case Playing(m, t) => t.toSeconds.toString() + "/" + m.duration
-            case Paused(m, t) => t.toSeconds.toString() + "/" + m.duration
-            case Off(m) => "00:00/" + m.duration
+            case Playing(m, t) => t.toSeconds.toMin.asString + "/" + m.duration.toSeconds.toMin.asString
+            case Paused(m, t) => t.toSeconds.toMin.asString + "/" + m.duration.toSeconds.toMin.asString
+            case Off(m) => "00:00/" + m.duration.toSeconds.toMin.asString
         ,
         TypeConstraints.None(Type.String)
       ),

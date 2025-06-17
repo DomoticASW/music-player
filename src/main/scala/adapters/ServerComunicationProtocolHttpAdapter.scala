@@ -20,6 +20,7 @@ import domain.MusicPlayerState.Off
 import domain.MusicPlayer.MusicPlayerOpsImpl.Milliseconds
 import domain.MusicPlayer.MusicPlayerOpsImpl.toMs
 import spray.json.RootJsonFormat
+import domain.MusicPlayer.MusicPlayerOpsImpl.toSeconds
 
 class ServerComunicationProtocolHttpAdapter(id: String)(using ExecutionContext) extends ServerComunicationProtocol:
   given Writer[Color] = Writer.derived
@@ -58,7 +59,7 @@ class ServerComunicationProtocolHttpAdapter(id: String)(using ExecutionContext) 
     (t.toSeconds.toInt / m.duration.toDouble * 100).toInt
 
   private def musicMinutes(m: Music, t: Milliseconds) =
-    t.toSeconds.toString() + "/" + m.duration
+    t.toSeconds.toMin.asString + "/" + m.duration.toSeconds.toMin.asString
 
   private def stateFromMusicAndCurrentTime(s: String, m: Music, t: Milliseconds) =
     MusicPlayerState(s.toString(), m.name, musicMinutes(m, t), musicProgress(m, t))
@@ -67,7 +68,7 @@ class ServerComunicationProtocolHttpAdapter(id: String)(using ExecutionContext) 
     println(write(EventItem(e.toString())))
     quickRequest
       .httpVersion(HttpVersion.HTTP_1_1)
-      .patch(
+      .post(
         uri"http://${address.host}:${address.port}/api/devices/${this.id}/events"
       )
       .contentType(MediaType.ApplicationJson)

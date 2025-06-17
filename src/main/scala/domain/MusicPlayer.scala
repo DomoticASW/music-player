@@ -61,10 +61,18 @@ object MusicPlayer:
   object MusicPlayerOpsImpl extends MusicPlayerOps:
     opaque type Seconds = Int
     opaque type Milliseconds = Long
+    opaque type Minutes = (Int, Seconds)
+
+    extension (i: Int)
+      def toSeconds: Seconds = i
+
+    extension (m: Minutes)
+      def asString: String = f"${m._1}%02d:${m._2}%02d"
 
     extension (t: Seconds)
       def toMs: Milliseconds = t * 1000
       def toInt: Int = t
+      def toMin: Minutes = (t / 60, t % 60)
 
     extension (i: Long)
       def toMs: Milliseconds = i
