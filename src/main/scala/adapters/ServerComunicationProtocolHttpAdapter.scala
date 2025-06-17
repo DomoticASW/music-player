@@ -91,8 +91,8 @@ class ServerComunicationProtocolHttpAdapter(id: String)(using ExecutionContext) 
       case _ =>
         prevState = Some(currentState)
         val updates = Seq(
-          UpdatePropertyItem("state", currentState.state.toString()),
-          UpdatePropertyItem("musics", currentState.music.toString()),
+          UpdatePropertyItem("state", currentState.state),
+          UpdatePropertyItem("musics", currentState.music),
           UpdatePropertyItem("minutes", currentState.minutes),
           UpdatePropertyItem("music-progress", currentState.musicProgress),
         )

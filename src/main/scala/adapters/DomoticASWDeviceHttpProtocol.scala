@@ -92,9 +92,9 @@ object DomoticASWDeviceHttpInterface:
         "Music state",
         a.musicPlayer.initialState match
           case More(s, tail) => s match
-            case Off => "Off"
-            case Playing => "Playing"
-            case Paused => "Paused"
+            case Off(_) => "Off"
+            case Playing(_, _) => "Playing"
+            case Paused(_, _) => "Paused"
         ,
         TypeConstraints.Enum(Set("Playing", "Paused", "Off"))
       ),
