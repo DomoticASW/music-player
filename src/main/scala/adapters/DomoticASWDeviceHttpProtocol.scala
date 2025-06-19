@@ -28,7 +28,7 @@ object DomoticASWDeviceHttpInterface:
   import Marshalling.given
   case class BadRequest(message: String)
   case class NotFound(message: String)
-  case class ExecuteActionBody(input: Option[String])
+  case class ExecuteActionBody(input: Option[ActualTypes])
   case class RegisterBody(serverPort: Int)
 
   def badActionIdMessage(action: String) =
@@ -58,11 +58,11 @@ object DomoticASWDeviceHttpInterface:
                         case _ => Left(BadRequest("The chosen music does not exists"))
                     case "set-music-progress" =>
                       body.input match
-                        case Some(value) if value.toIntOption.isDefined => 
-                          value.toInt match
+                        case Some(value) if value.isInstanceOf[Int] => 
+                          value.asInstanceOf[Int] match
                             case x if x > 100 || x < 0 => Left(BadRequest("The music progress must be between 0 and 100"))
-                            case _ => Right(ChangeTime(value.toInt))
-                        case _ => Left(BadRequest("The new music progress should exists if trying to change the old one"))
+                            case x => Right(ChangeTime(x))
+                        case _ => Left(BadRequest("The new music progress should exists if trying to change the old one, and should be an integer"))
                   
                   post:
                     action match
@@ -170,7 +170,6 @@ object DomoticASWDeviceHttpInterface:
     import DomoticASWDeviceHttpInterface.*
     given RootJsonFormat[BadRequest] = jsonFormat1(BadRequest.apply)
     given RootJsonFormat[NotFound] = jsonFormat1(NotFound.apply)
-    given RootJsonFormat[ExecuteActionBody] = jsonFormat1(ExecuteActionBody.apply)
     given RootJsonFormat[RegisterBody] = jsonFormat1(RegisterBody.apply)
 
     given RootJsonFormat[Color] = jsonFormat3(Color.apply)
@@ -311,3 +310,5 @@ object DomoticASWDeviceHttpInterface:
 
     given RootJsonFormat[DeviceRegistration] =
       jsonFormat5(DeviceRegistration.apply)
+
+    given RootJsonFormat[ExecuteActionBody] = jsonFormat1(ExecuteActionBody.apply)
