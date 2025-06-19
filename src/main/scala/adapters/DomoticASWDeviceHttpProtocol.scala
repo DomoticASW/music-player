@@ -74,7 +74,6 @@ object DomoticASWDeviceHttpInterface:
               ,
               (path("register") & entity(as[RegisterBody]) & post): body =>
                 musicPlayerAgent.registerToServer(ServerAddress(clientAddress.getHostName(), body.serverPort))
-                println(musicPlayerRegistration(musicPlayerAgent).toJson)
                 complete(StatusCodes.OK, musicPlayerRegistration(musicPlayerAgent))
               ,
               path("check-status"):

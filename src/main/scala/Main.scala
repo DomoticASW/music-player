@@ -29,14 +29,14 @@ object Main extends App:
         case _ => Left("At least one music should be given")
     yield musics
 
-  def steps: Either[String, Long] =
+  def updateRate: Either[String, Long] =
     for
-      stepsStr <- Right(sys.env.get("STEPS"))
-      steps <- stepsStr match
+      updateRateStr <- Right(sys.env.get("UPDATE_RATE"))
+      updateRate <- updateRateStr match
         case None => Right(1000l)
         case Some(value) =>
-          value.toLongOption.toRight("Steps should be an integer")
-    yield steps
+          value.toLongOption.toRight("Update rate should be an integer")
+    yield updateRate
 
   object isInt:
     def unapply(s: String): Option[Int] = s.toIntOption
@@ -65,17 +65,17 @@ object Main extends App:
 
   def probabilityToPause = 0.2
 
-  def id: Either[String, String] = Right(sys.env.get("ID").getOrElse("Music-player"))
+  def id: Either[String, String] = Right(sys.env.get("ID").getOrElse("music-player"))
   def musicPlayerName: Either[String, String] = Right(sys.env.get("NAME").getOrElse("Music player"))
 
   val config = for
     id <- id
     name <- musicPlayerName
     m <- musics
-    s <- steps
+    ur <- updateRate
     port <- port(default = 8080)
     serverAddress <- serverAddress(default = None)
-    config <- ConfigChecker(id, name, m, s).left.map(_.message)
+    config <- ConfigChecker(id, name, m, ur).left.map(_.message)
   yield (config, port, serverAddress)
 
   config match
@@ -86,10 +86,10 @@ object Main extends App:
       val id = config.id
       val name = config.name
       val m = config.musics
-      val s = config.steps
+      val ur = config.updateRate
 
       val ec = ExecutionContext.global
-      val player = MusicPlayer(id, name, m, s)
+      val player = MusicPlayer(id, name, m, ur)
       val playerAgent = MusicPlayerAgent(new ServerComunicationProtocolHttpAdapter(id)(using ec), player, 50)
       serverAddress.foreach(playerAgent.registerToServer(_))
       playerAgent.start()

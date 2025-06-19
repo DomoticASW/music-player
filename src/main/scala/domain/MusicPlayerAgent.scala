@@ -22,7 +22,6 @@ class MusicPlayerAgent(serverProtocol: ServerComunicationProtocol, private var _
 
   def musicPlayer = _musicPlayer
   def musicPlayer_=(m: MusicPlayer) = _musicPlayer = m
-  val steps = musicPlayer.steps
 
   private var actions: Seq[Action] = Seq()
 
@@ -66,7 +65,7 @@ class MusicPlayerAgent(serverProtocol: ServerComunicationProtocol, private var _
         case Left(event) => this.serverAddress.foreach(this.serverProtocol.sendEvent(_, event))
         case Right(_) => ()
 
-      if timePassed >= musicPlayer.steps
+      if timePassed >= musicPlayer.updateRate
       then
         timePassed = 0
         this.serverAddress.foreach(this.serverProtocol.updateState(_, newState.s))

@@ -35,13 +35,13 @@ enum Action:
 trait MusicPlayer:
   def id: String
   def name: String
-  def steps: Long
+  def updateRate: Long
   def musics: Set[Music]
   def initialState: GlobalState
   def withNewState(m: GlobalState): MusicPlayer
 
 object MusicPlayer:
-  private case class MusicPlayerImpl(id: String, name: String, musics: Set[Music], steps: Long) extends MusicPlayer:
+  private case class MusicPlayerImpl(id: String, name: String, musics: Set[Music], updateRate: Long) extends MusicPlayer:
     var initialState: GlobalState = MusicPlayerOpsImpl.initialState(musics.head)
 
     override def withNewState(m: GlobalState): MusicPlayer = 
@@ -49,8 +49,8 @@ object MusicPlayer:
       copy.initialState = m
       copy
 
-  def apply(id: String, name: String, musics: Set[Music], steps: Long): MusicPlayer =
-    MusicPlayerImpl(id = id, name = name, musics = musics, steps = steps)
+  def apply(id: String, name: String, musics: Set[Music], updateRate: Long): MusicPlayer =
+    MusicPlayerImpl(id = id, name = name, musics = musics, updateRate = updateRate)
 
   trait MusicPlayerOps:
     type GlobalState

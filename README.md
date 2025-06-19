@@ -13,6 +13,7 @@ For example `docker run -e MUSICS="Monster-10,Chop Suey!-20,La follia di Vivaldi
 
 | Variable name  | Default value                                            | Explanation                        | Admissible values                                                    |
 |--------------  |----------------------------------------------------------|----------------------------------- |----------------------------------------------------------------------|
+| ID             | music-player                                             | Music player id                    | Any not empty string                                                 |
 | NAME           | Music Player                                             | Music player name                  | Any not empty string                                                 |
 | STEPS          | 1000                                                     | Music's state update interval (ms) | Integers > 0                                                        |
 | MUSICS         | Black In Black-10, Don't stop believin-5, Poker's Face-7 | Musics in the player               | Comma-separated list of musicName-duration |
