@@ -12,6 +12,9 @@ import adapters.ServerComunicationProtocolHttpAdapter
 import ports.ServerComunicationProtocol.ServerAddress
 
 object Main extends App:
+  def parse(envVar: String)(default: String): Right[Nothing, String] =
+    Right(sys.env.getOrElse(envVar, default))
+
   def musics: Either[String, Set[Music]] =
     for
       musicsStr <- Right(sys.env.get("MUSICS").map(_.split(",").map(_.trim()).toSet))
@@ -63,26 +66,37 @@ object Main extends App:
       case Some(isInt(p)) => Left(s"Invalid port $p is out of valid port range")
       case Some(nonInt)   => Left(s"Invalid port $nonInt is not an integer")
 
-  def probabilityToPause = 0.2
-
-  def id: Either[String, String] = Right(sys.env.get("ID").getOrElse("music-player"))
-  def musicPlayerName: Either[String, String] = Right(sys.env.get("NAME").getOrElse("Music player"))
+  def serverDiscoveryPort(default: Int): Either[String, Int] =
+    val envVar = "SERVER_DISCOVERY_PORT"
+    for
+      str <- sys.env.get(envVar) match
+        case None => Right(default.toString())
+        case Some(value) => Right(value)
+      port <- str.toIntOption match
+        case None => Left(s"Invalid port $str is not an integer")
+        case Some(p) if p >= 0 & p <= 65335 => Right(p)
+        case Some(p) => Left(s"Invalid port $p is out of valid port range")
+    yield (port)
 
   val config = for
-    id <- id
-    name <- musicPlayerName
+    id <- parse("ID")(default = "music-player")
+    name <- parse("NAME")(default = "Music player")
     m <- musics
     ur <- updateRate
     port <- port(default = 8080)
     serverAddress <- serverAddress(default = None)
+    serverDiscoveryPort <- serverDiscoveryPort(default = 30000)
+    discoveryBroadcastAddress <- parse("DISCOVERY_BROADCAST_ADDR")(default =
+      "255.255.255.255"
+    )
     config <- ConfigChecker(id, name, m, ur).left.map(_.message)
-  yield (config, port, serverAddress)
+  yield (config, port, serverAddress, serverDiscoveryPort, discoveryBroadcastAddress)
 
   config match
     case Left(err: String) =>
       Console.err.println(err)
       sys.exit(1)
-    case Right((config, port, serverAddress)) =>
+    case Right((config, port, serverAddress, serverDiscoveryPort, discoveryBroadcastAddress)) =>
       val id = config.id
       val name = config.name
       val m = config.musics
@@ -90,7 +104,7 @@ object Main extends App:
 
       val ec = ExecutionContext.global
       val player = MusicPlayer(id, name, m, ur)
-      val playerAgent = MusicPlayerAgent(new ServerComunicationProtocolHttpAdapter(id)(using ec), player, 50)
+      val playerAgent = MusicPlayerAgent(new ServerComunicationProtocolHttpAdapter(id, name, serverDiscoveryPort, discoveryBroadcastAddress)(using ec), player, periodMs = 50, announceEveryMs = 5000)
       serverAddress.foreach(playerAgent.registerToServer(_))
       playerAgent.start()
 

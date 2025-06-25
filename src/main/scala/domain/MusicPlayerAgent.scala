@@ -18,7 +18,7 @@ import ports.ServerComunicationProtocol.*
   *   It is suggested to choose a period which is less than the MEST (Minimum
   *   Event Separation Time)
   */
-class MusicPlayerAgent(serverProtocol: ServerComunicationProtocol, private var _musicPlayer: MusicPlayer, periodMs: Long) extends Thread:
+class MusicPlayerAgent(serverProtocol: ServerComunicationProtocol, private var _musicPlayer: MusicPlayer, periodMs: Long, announceEveryMs: Long) extends Thread:
 
   def musicPlayer = _musicPlayer
   def musicPlayer_=(m: MusicPlayer) = _musicPlayer = m
@@ -49,12 +49,12 @@ class MusicPlayerAgent(serverProtocol: ServerComunicationProtocol, private var _
   def setShouldStop(): Unit = synchronized { _shouldStop = true }
 
   private var timePassed: Long = 0
+  private var timeFromLastAnnounceMs: Long = 0
 
   override def run(): Unit =
     import Action.*
     while !shouldStop do
       Thread.sleep(periodMs)
-      timePassed = timePassed + periodMs
       val actions = takeActions()
       val state = actions match
         case h :: t => executeAction(h)
@@ -65,7 +65,17 @@ class MusicPlayerAgent(serverProtocol: ServerComunicationProtocol, private var _
         case Left(event) => this.serverAddress.foreach(this.serverProtocol.sendEvent(_, event))
         case Right(_) => ()
 
-      if timePassed >= musicPlayer.updateRate
-      then
-        timePassed = 0
-        this.serverAddress.foreach(this.serverProtocol.updateState(_, newState.s))
+      serverAddress match
+        case Some(serverAddress) =>
+          if timePassed >= musicPlayer.updateRate
+          then
+            timePassed = 0
+            this.serverProtocol.updateState(serverAddress, newState.s)
+          else
+            timePassed = timePassed + periodMs
+        case None if timeFromLastAnnounceMs >= announceEveryMs =>
+          serverProtocol.announce()
+          timeFromLastAnnounceMs = 0
+        case None =>
+          timeFromLastAnnounceMs += periodMs
+      

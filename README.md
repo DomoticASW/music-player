@@ -8,7 +8,7 @@ docker run corradostortini2/domoticasw-music-player
 
 The following configurations can be passed to the container as environment variables.
 
-For example `docker run -e MUSICS="Monster-10,Chop Suey!-20,La follia di Vivaldi-50" corradostortini2/domoticasw-music-player`
+For example `docker run -e SERVER_DISCOVERY_PORT=30000 -e MUSICS="Monster-10,Chop Suey!-20,La follia di Vivaldi-50" corradostortini2/domoticasw-music-player`
 
 
 | Variable name  | Default value                                            | Explanation                        | Admissible values                                                    |
@@ -17,6 +17,8 @@ For example `docker run -e MUSICS="Monster-10,Chop Suey!-20,La follia di Vivaldi
 | NAME           | Music Player                                             | Music player name                  | Any not empty string                                                 |
 | UPDATE_RATE    | 1000                                                     | Music's state update interval (ms) | Integers > 0                                                        |
 | MUSICS         | Black In Black-10, Don't stop believin-5, Poker's Face-7 | Musics in the player               | Comma-separated list of musicName-duration |
+| DISCOVERY_BROADCAST_ADDR | 255.255.255.255                        | Broadcast address to which send discovery announces  | Any valid broadcast address (ex: 192.168.1.255) |
+| SERVER_DISCOVERY_PORT | 30000                                             | Port on which the server expects discovery announces | Any valid port
 | SERVER_ADDRESS | None | Should be set if music player is already registered | |
 | PORT         | 8080 | Port on which the device will listen               | Any valid port |
 
