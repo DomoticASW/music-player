@@ -1,6 +1,6 @@
 import domain.Music
 import domain.MusicPlayer
-import logger.* 
+import logger.*
 import sleeper.*
 import domain.*
 import utils.OneOf.*
@@ -17,17 +17,27 @@ object Main extends App:
 
   def musics: Either[String, Set[Music]] =
     for
-      musicsStr <- Right(sys.env.get("MUSICS").map(_.split(",").map(_.trim()).toSet))
+      musicsStr <- Right(
+        sys.env.get("MUSICS").map(_.split(",").map(_.trim()).toSet)
+      )
       musics <- musicsStr match
-        case None => Right(Set(
-            Music("Back In Black", 10),
-            Music("Don't Stop Believin", 5),
-            Music("Poker's Face", 7)
-          ))
+        case None =>
+          Right(
+            Set(
+              Music("Back In Black", 10),
+              Music("Don't Stop Believin", 5),
+              Music("Poker's Face", 7)
+            )
+          )
         case Some(value) if value.size > 1 =>
           val pairs = value.map(_.split("-"))
-          if pairs.find(_.length != 2).isDefined || pairs.find(!_.apply(1).toIntOption.isDefined).isDefined
-          then Left("The Musics are defined by the name and the duration (integer) separeted by a -")
+          if pairs.find(_.length != 2).isDefined || pairs
+              .find(!_.apply(1).toIntOption.isDefined)
+              .isDefined
+          then
+            Left(
+              "The Musics are defined by the name and the duration (integer) separeted by a -"
+            )
           else Right(pairs.map(p => Music(p(0), p(1).toInt)).toSet)
         case _ => Left("At least one music should be given")
     yield musics
@@ -36,7 +46,7 @@ object Main extends App:
     for
       updateRateStr <- Right(sys.env.get("UPDATE_RATE"))
       updateRate <- updateRateStr match
-        case None => Right(1000l)
+        case None => Right(1000L)
         case Some(value) =>
           value.toLongOption.toRight("Update rate should be an integer")
     yield updateRate
@@ -70,7 +80,7 @@ object Main extends App:
     val envVar = "SERVER_DISCOVERY_PORT"
     for
       str <- sys.env.get(envVar) match
-        case None => Right(default.toString())
+        case None        => Right(default.toString())
         case Some(value) => Right(value)
       port <- str.toIntOption match
         case None => Left(s"Invalid port $str is not an integer")
@@ -90,13 +100,27 @@ object Main extends App:
       "255.255.255.255"
     )
     config <- ConfigChecker(id, name, m, ur).left.map(_.message)
-  yield (config, port, serverAddress, serverDiscoveryPort, discoveryBroadcastAddress)
+  yield (
+    config,
+    port,
+    serverAddress,
+    serverDiscoveryPort,
+    discoveryBroadcastAddress
+  )
 
   config match
     case Left(err: String) =>
       Console.err.println(err)
       sys.exit(1)
-    case Right((config, port, serverAddress, serverDiscoveryPort, discoveryBroadcastAddress)) =>
+    case Right(
+          (
+            config,
+            port,
+            serverAddress,
+            serverDiscoveryPort,
+            discoveryBroadcastAddress
+          )
+        ) =>
       val id = config.id
       val name = config.name
       val m = config.musics
@@ -104,7 +128,18 @@ object Main extends App:
 
       val ec = ExecutionContext.global
       val player = MusicPlayer(id, name, m, ur)
-      val playerAgent = MusicPlayerAgent(new ServerComunicationProtocolHttpAdapter(id, name, serverDiscoveryPort, discoveryBroadcastAddress)(using ec), player, periodMs = 50, announceEveryMs = 5000)
+      val playerAgent = MusicPlayerAgent(
+        new ServerComunicationProtocolHttpAdapter(
+          id,
+          name,
+          clientPort = port,
+          announcePort = serverDiscoveryPort,
+          discoveryBroadcastAddress = discoveryBroadcastAddress
+        )(using ec),
+        player,
+        periodMs = 50,
+        announceEveryMs = 5000
+      )
       serverAddress.foreach(playerAgent.registerToServer(_))
       playerAgent.start()
 

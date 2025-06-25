@@ -34,8 +34,8 @@ object DomoticASWDeviceHttpInterface:
   def badActionIdMessage(action: String) =
     s"Action \"$action\" not found, known actions are [\"changeMusic\", \"setMusicProgress\", \"play\", \"pause\", \"stop\"]"
 
-  def apply(host: String, port: Int, musicPlayerAgent: MusicPlayerAgent)(
-    using a: ActorSystem[Any]
+  def apply(host: String, port: Int, musicPlayerAgent: MusicPlayerAgent)(using
+      a: ActorSystem[Any]
   ): Future[ServerBinding] =
     Http()
       .newServerAt(host, port)
@@ -48,39 +48,64 @@ object DomoticASWDeviceHttpInterface:
               (path("execute" / Segment) & entity(as[ExecuteActionBody])):
                 (segment, body) =>
                   val action: Either[BadRequest, Action] = segment match
-                    case "play" => Right(Play)
+                    case "play"  => Right(Play)
                     case "pause" => Right(Pause)
-                    case "stop" => Right(Stop)
+                    case "stop"  => Right(Stop)
                     case "change-music" =>
                       body.input match
-                        case Some(value) if musicPlayerAgent.musicPlayer.musics.find(_.name == value).isDefined =>
-                          Right(ChangeMusic(musicPlayerAgent.musicPlayer.musics.find(_.name == value).get))
-                        case _ => Left(BadRequest("The chosen music does not exists"))
+                        case Some(value)
+                            if musicPlayerAgent.musicPlayer.musics
+                              .find(_.name == value)
+                              .isDefined =>
+                          Right(
+                            ChangeMusic(
+                              musicPlayerAgent.musicPlayer.musics
+                                .find(_.name == value)
+                                .get
+                            )
+                          )
+                        case _ =>
+                          Left(BadRequest("The chosen music does not exists"))
                     case "set-music-progress" =>
                       body.input match
-                        case Some(value) if value.isInstanceOf[Int] => 
+                        case Some(value) if value.isInstanceOf[Int] =>
                           value.asInstanceOf[Int] match
-                            case x if x > 100 || x < 0 => Left(BadRequest("The music progress must be between 0 and 100"))
+                            case x if x > 100 || x < 0 =>
+                              Left(
+                                BadRequest(
+                                  "The music progress must be between 0 and 100"
+                                )
+                              )
                             case x => Right(ChangeTime(x))
-                        case _ => Left(BadRequest("The new music progress should exists if trying to change the old one, and should be an integer"))
-                  
+                        case _ =>
+                          Left(
+                            BadRequest(
+                              "The new music progress should exists if trying to change the old one, and should be an integer"
+                            )
+                          )
+
                   post:
                     action match
-                      case Left(err) => 
+                      case Left(err) =>
                         complete(StatusCodes.BadRequest, err)
                       case Right(value) =>
                         musicPlayerAgent.enqueAction(value)
                         complete(StatusCodes.OK)
               ,
               (path("register") & entity(as[RegisterBody]) & post): body =>
-                musicPlayerAgent.registerToServer(ServerAddress(clientAddress.getHostName(), body.serverPort))
-                complete(StatusCodes.OK, musicPlayerRegistration(musicPlayerAgent))
+                musicPlayerAgent.registerToServer(
+                  ServerAddress(clientAddress.getHostName(), body.serverPort)
+                )
+                complete(
+                  StatusCodes.OK,
+                  musicPlayerRegistration(musicPlayerAgent)
+                )
               ,
               path("check-status"):
                 complete(StatusCodes.OK)
             )
       }
-    .run()
+      .run()
 
   def musicPlayerRegistration(a: MusicPlayerAgent) = DeviceRegistration(
     a.musicPlayer.id,
@@ -90,10 +115,11 @@ object DomoticASWDeviceHttpInterface:
         "state",
         "Music state",
         a.musicPlayer.initialState match
-          case More(s, tail) => s match
-            case Off(_) => "Off"
-            case Playing(_, _) => "Playing"
-            case Paused(_, _) => "Paused"
+          case More(s, tail) =>
+            s match
+              case Off(_)        => "Off"
+              case Playing(_, _) => "Playing"
+              case Paused(_, _)  => "Paused"
         ,
         TypeConstraints.Enum(Set("Playing", "Paused", "Off"))
       ),
@@ -101,10 +127,11 @@ object DomoticASWDeviceHttpInterface:
         "musics",
         "Musics",
         a.musicPlayer.initialState match
-          case More(s, tail) => s match
-            case Off(m) => m.name
-            case Playing(m, _) => m.name
-            case Paused(m, _) => m.name
+          case More(s, tail) =>
+            s match
+              case Off(m)        => m.name
+              case Playing(m, _) => m.name
+              case Paused(m, _)  => m.name
         ,
         "change-music"
       ),
@@ -112,10 +139,13 @@ object DomoticASWDeviceHttpInterface:
         "minutes",
         "Minutes",
         a.musicPlayer.initialState match
-          case More(s, tail) => s match
-            case Playing(m, t) => t.toSeconds.toMin.asString + "/" + m.duration.toSeconds.toMin.asString
-            case Paused(m, t) => t.toSeconds.toMin.asString + "/" + m.duration.toSeconds.toMin.asString
-            case Off(m) => "00:00/" + m.duration.toSeconds.toMin.asString
+          case More(s, tail) =>
+            s match
+              case Playing(m, t) =>
+                t.toSeconds.toMin.asString + "/" + m.duration.toSeconds.toMin.asString
+              case Paused(m, t) =>
+                t.toSeconds.toMin.asString + "/" + m.duration.toSeconds.toMin.asString
+              case Off(m) => "00:00/" + m.duration.toSeconds.toMin.asString
         ,
         TypeConstraints.None(Type.String)
       ),
@@ -123,10 +153,13 @@ object DomoticASWDeviceHttpInterface:
         "music-progress",
         "Music progress",
         a.musicPlayer.initialState match
-          case More(s, tail) => s match
-            case Playing(m, t) => (t.toSeconds.toInt / m.duration.toDouble * 100).toInt
-            case Paused(m, t) => (t.toSeconds.toInt / m.duration.toDouble * 100).toInt
-            case _ => 0
+          case More(s, tail) =>
+            s match
+              case Playing(m, t) =>
+                (t.toSeconds.toInt / m.duration.toDouble * 100).toInt
+              case Paused(m, t) =>
+                (t.toSeconds.toInt / m.duration.toDouble * 100).toInt
+              case _ => 0
         ,
         "set-music-progress"
       )
@@ -231,7 +264,8 @@ object DomoticASWDeviceHttpInterface:
     given RootJsonFormat[TypeConstraints] = new RootJsonFormat {
       def read(json: JsValue): TypeConstraints =
         json.asJsObject().fields.get("constraint") match
-          case scala.None => deserializationError("expected field \"constraint\"")
+          case scala.None =>
+            deserializationError("expected field \"constraint\"")
           case Some(value) =>
             val fields = JsObject(json.asJsObject().fields - "constraint")
             value match
@@ -311,4 +345,6 @@ object DomoticASWDeviceHttpInterface:
     given RootJsonFormat[DeviceRegistration] =
       jsonFormat5(DeviceRegistration.apply)
 
-    given RootJsonFormat[ExecuteActionBody] = jsonFormat1(ExecuteActionBody.apply)
+    given RootJsonFormat[ExecuteActionBody] = jsonFormat1(
+      ExecuteActionBody.apply
+    )

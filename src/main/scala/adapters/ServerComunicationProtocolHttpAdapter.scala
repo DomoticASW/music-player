@@ -24,7 +24,7 @@ import domain.MusicPlayer.MusicPlayerOpsImpl.toSeconds
 import domain.MusicPlayer
 import scala.util.Using
 
-class ServerComunicationProtocolHttpAdapter(id: String, name: String, announcePort: Int, discoveryBroadcastAddress: String)(using ExecutionContext) extends ServerComunicationProtocol:
+class ServerComunicationProtocolHttpAdapter(id: String, name: String, clientPort: Int, announcePort: Int, discoveryBroadcastAddress: String)(using ExecutionContext) extends ServerComunicationProtocol:
   given Writer[Color] = Writer.derived
   given Writer[DomoticASW.ActualTypes] with
     def write0[V](out: Visitor[?, V], v: ActualTypes): V =
@@ -123,7 +123,7 @@ class ServerComunicationProtocolHttpAdapter(id: String, name: String, announcePo
     Using(DatagramSocket()): socket =>
       socket.setBroadcast(true)
       val data =
-        write(AnnounceMessage(id, name, announcePort))
+        write(AnnounceMessage(id, name, clientPort))
           .getBytes(StandardCharsets.UTF_8)
       val broadcastAddress = InetAddress.getByName(discoveryBroadcastAddress)
       val packet = new DatagramPacket(

@@ -24,13 +24,13 @@ object LoggerImpl extends Logger:
   override def emitEvent(e: Either[Event, Unit]): State[GlobalState, Boolean] =
     State[LoggerState, Boolean](s =>
       e match
-      case Left(event) =>
-        println("event emitted: ".red + event.toString().green)
-        (s :+ event, true)
-      case _ => (s, false)
+        case Left(event) =>
+          println("event emitted: ".red + event.toString().green)
+          (s :+ event, true)
+        case _ => (s, false)
     )
   override def log(msg: String): State[GlobalState, Unit] =
-    State[LoggerState, Unit](s => 
+    State[LoggerState, Unit](s =>
       println(msg)
       (s, ())
     )

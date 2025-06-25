@@ -26,12 +26,16 @@ given headLifter[S, Tail <: OneOf]: Lifter[S, More[S, Tail]] with
       (More(newState, more.tail), a)
     )
 
-given tailLifter[S, H, Tail <: OneOf](using lt: Lifter[S, Tail]): Lifter[S, More[H, Tail]] with
+given tailLifter[S, H, Tail <: OneOf](using
+    lt: Lifter[S, Tail]
+): Lifter[S, More[H, Tail]] with
   def lift[A](sa: State[S, A]): State[More[H, Tail], A] =
     State(more =>
       val (newTail, a) = lt.lift(sa).run(more.tail)
       (More(more.s, newTail), a)
     )
 
-given autoLifter[S, Big <: OneOf, A](using lifter: Lifter[S, Big]): Conversion[State[S, A], State[Big, A]] with
-    def apply(sa: State[S, A]): State[Big, A] = lifter.lift(sa)
+given autoLifter[S, Big <: OneOf, A](using
+    lifter: Lifter[S, Big]
+): Conversion[State[S, A], State[Big, A]] with
+  def apply(sa: State[S, A]): State[Big, A] = lifter.lift(sa)

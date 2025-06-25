@@ -18,4 +18,7 @@ object SleeperImpl extends Sleeper:
     State[SleeperState, Long](s => (s, s))
 
   override def sleep(ms: Long): State[GlobalState, Unit] =
-    State[SleeperState, Unit](s => { Thread.sleep(ms); (if s + ms >= Long.MaxValue then Long.MaxValue else s + ms, ())})
+    State[SleeperState, Unit](s => {
+      Thread.sleep(ms);
+      (if s + ms >= Long.MaxValue then Long.MaxValue else s + ms, ())
+    })

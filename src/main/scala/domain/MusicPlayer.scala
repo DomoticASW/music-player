@@ -41,16 +41,31 @@ trait MusicPlayer:
   def withNewState(m: GlobalState): MusicPlayer
 
 object MusicPlayer:
-  private case class MusicPlayerImpl(id: String, name: String, musics: Set[Music], updateRate: Long) extends MusicPlayer:
+  private case class MusicPlayerImpl(
+      id: String,
+      name: String,
+      musics: Set[Music],
+      updateRate: Long
+  ) extends MusicPlayer:
     var initialState: GlobalState = MusicPlayerOpsImpl.initialState(musics.head)
 
-    override def withNewState(m: GlobalState): MusicPlayer = 
+    override def withNewState(m: GlobalState): MusicPlayer =
       val copy = this.copy()
       copy.initialState = m
       copy
 
-  def apply(id: String, name: String, musics: Set[Music], updateRate: Long): MusicPlayer =
-    MusicPlayerImpl(id = id, name = name, musics = musics, updateRate = updateRate)
+  def apply(
+      id: String,
+      name: String,
+      musics: Set[Music],
+      updateRate: Long
+  ): MusicPlayer =
+    MusicPlayerImpl(
+      id = id,
+      name = name,
+      musics = musics,
+      updateRate = updateRate
+    )
 
   trait MusicPlayerOps:
     type GlobalState
@@ -63,76 +78,79 @@ object MusicPlayer:
     opaque type Milliseconds = Long
     opaque type Minutes = (Int, Seconds)
 
-    extension (i: Int)
-      def toSeconds: Seconds = i
+    extension (i: Int) def toSeconds: Seconds = i
 
-    extension (m: Minutes)
-      def asString: String = f"${m._1}%02d:${m._2}%02d"
+    extension (m: Minutes) def asString: String = f"${m._1}%02d:${m._2}%02d"
 
     extension (t: Seconds)
       def toMs: Milliseconds = t * 1000
       def toInt: Int = t
       def toMin: Minutes = (t / 60, t % 60)
 
-    extension (i: Long)
-      def toMs: Milliseconds = i
-    
-    extension (t: Milliseconds)
-      def toSeconds: Seconds = (t / 1000.0).toInt
+    extension (i: Long) def toMs: Milliseconds = i
+
+    extension (t: Milliseconds) def toSeconds: Seconds = (t / 1000.0).toInt
 
     import MusicPlayerState.*
     import Event.*
 
     opaque type MusicState = MusicPlayerState
-    override type GlobalState = More[MusicState, More[LoggerState, One[SleeperState]]]
+    override type GlobalState =
+      More[MusicState, More[LoggerState, One[SleeperState]]]
 
-    private[MusicPlayer] def initialState(m: Music): GlobalState = More(Off(m), More(LoggerImpl.initialState, One(SleeperImpl.initialState)))
+    private[MusicPlayer] def initialState(m: Music): GlobalState =
+      More(Off(m), More(LoggerImpl.initialState, One(SleeperImpl.initialState)))
 
     override def currentState: State[GlobalState, MusicPlayerState] =
       State[MusicState, MusicPlayerState](s => (s, s))
 
-    override def executeAction(action: Action): State[GlobalState, Either[Event, Unit]] =
+    override def executeAction(
+        action: Action
+    ): State[GlobalState, Either[Event, Unit]] =
       import Action.*
       State[MusicState, Either[Event, Unit]](s =>
         action match
-          case Play => play(s)
-          case Pause => pause(s)
+          case Play           => play(s)
+          case Pause          => pause(s)
           case ChangeMusic(m) => changeMusic(s, m)
-          case ChangeTime(p) => changeTime(s, p)
-          case Stop => stop(s)
+          case ChangeTime(p)  => changeTime(s, p)
+          case Stop           => stop(s)
       )
 
     private def play(s: MusicPlayerState) = s match
       case Paused(m, t) => (Playing(m, t), Left(Event.Resume))
-      case Off(m) => (Playing(m, 0l), Left(Event.Start))
-      case _ => (s, Right(()))
+      case Off(m)       => (Playing(m, 0L), Left(Event.Start))
+      case _            => (s, Right(()))
 
     private def pause(s: MusicPlayerState) = s match
       case Playing(m, t) => (Paused(m, t), Left(Event.Pause))
-      case _ => (s, Right(()))
+      case _             => (s, Right(()))
 
     private def changeMusic(s: MusicPlayerState, m: Music) = s match
-      case Playing(_, _) => (Playing(m, 0l), Left(Event.ChangeMusic))
-      case Paused(_, _) => (Paused(m, 0l), Left(Event.ChangeMusic))
-      case Off(_) => (Off(m), Left(Event.ChangeMusic))
+      case Playing(_, _) => (Playing(m, 0L), Left(Event.ChangeMusic))
+      case Paused(_, _)  => (Paused(m, 0L), Left(Event.ChangeMusic))
+      case Off(_)        => (Off(m), Left(Event.ChangeMusic))
 
     private def changeTime(s: MusicPlayerState, p: Int) = s match
-      case Playing(m, _) => (Playing(m, (p / 100.0 * m.duration.toMs).toLong), Right(()))
-      case Paused(m, _) => (Paused(m, (p / 100.0 * m.duration.toMs).toLong), Right(()))
+      case Playing(m, _) =>
+        (Playing(m, (p / 100.0 * m.duration.toMs).toLong), Right(()))
+      case Paused(m, _) =>
+        (Paused(m, (p / 100.0 * m.duration.toMs).toLong), Right(()))
       case _ => (s, Right(()))
 
     private def stop(s: MusicPlayerState) = s match
       case Playing(m, _) => (Off(m), Left(Event.End))
-      case Paused(m, _) => (Off(m), Left(Event.End))
-      case _ => (s, Right(()))
-    
-    override def step(ms: Milliseconds): State[GlobalState, Either[Event, Unit]] =
-      State[MusicState, Either[Event, Unit]](s => 
+      case Paused(m, _)  => (Off(m), Left(Event.End))
+      case _             => (s, Right(()))
+
+    override def step(
+        ms: Milliseconds
+    ): State[GlobalState, Either[Event, Unit]] =
+      State[MusicState, Either[Event, Unit]](s =>
         s match
           case Playing(m, t) =>
             if t + ms >= m.duration.toMs then
               (Paused(m, m.duration.toMs), Left(Event.End))
-            else
-              (Playing(m, t + ms), Right(()))
+            else (Playing(m, t + ms), Right(()))
           case _ => (s, Right(()))
       )

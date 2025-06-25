@@ -18,7 +18,12 @@ import ports.ServerComunicationProtocol.*
   *   It is suggested to choose a period which is less than the MEST (Minimum
   *   Event Separation Time)
   */
-class MusicPlayerAgent(serverProtocol: ServerComunicationProtocol, private var _musicPlayer: MusicPlayer, periodMs: Long, announceEveryMs: Long) extends Thread:
+class MusicPlayerAgent(
+    serverProtocol: ServerComunicationProtocol,
+    private var _musicPlayer: MusicPlayer,
+    periodMs: Long,
+    announceEveryMs: Long
+) extends Thread:
 
   def musicPlayer = _musicPlayer
   def musicPlayer_=(m: MusicPlayer) = _musicPlayer = m
@@ -58,11 +63,12 @@ class MusicPlayerAgent(serverProtocol: ServerComunicationProtocol, private var _
       val actions = takeActions()
       val state = actions match
         case h :: t => executeAction(h)
-        case Nil => step(periodMs.toMs)
+        case Nil    => step(periodMs.toMs)
       val (newState, e) = state.run(musicPlayer.initialState)
       musicPlayer = musicPlayer.withNewState(newState)
       e match
-        case Left(event) => this.serverAddress.foreach(this.serverProtocol.sendEvent(_, event))
+        case Left(event) =>
+          this.serverAddress.foreach(this.serverProtocol.sendEvent(_, event))
         case Right(_) => ()
 
       serverAddress match
@@ -71,11 +77,9 @@ class MusicPlayerAgent(serverProtocol: ServerComunicationProtocol, private var _
           then
             timePassed = 0
             this.serverProtocol.updateState(serverAddress, newState.s)
-          else
-            timePassed = timePassed + periodMs
+          else timePassed = timePassed + periodMs
         case None if timeFromLastAnnounceMs >= announceEveryMs =>
           serverProtocol.announce()
           timeFromLastAnnounceMs = 0
         case None =>
           timeFromLastAnnounceMs += periodMs
-      
