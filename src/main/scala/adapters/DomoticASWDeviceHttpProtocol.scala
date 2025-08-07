@@ -26,8 +26,8 @@ import domain.MusicPlayer.MusicPlayerOpsImpl.toSeconds
 
 object DomoticASWDeviceHttpInterface:
   import Marshalling.given
-  case class BadRequest(message: String)
-  case class NotFound(message: String)
+  case class BadRequest(cause: String)
+  case class NotFound(cause: String)
   case class ExecuteActionBody(input: Option[ActualTypes])
   case class RegisterBody(serverPort: Int)
 
