@@ -24,7 +24,15 @@ import domain.MusicPlayer.MusicPlayerOpsImpl.toSeconds
 import domain.MusicPlayer
 import scala.util.Using
 
-class ServerComunicationProtocolHttpAdapter(id: String, name: String, clientPort: Int, announcePort: Int, discoveryBroadcastAddress: String)(using ExecutionContext) extends ServerComunicationProtocol:
+class ServerComunicationProtocolHttpAdapter(
+    id: String,
+    name: String,
+    clientPort: Int,
+    announcePort: Int,
+    discoveryBroadcastAddress: String,
+    lanHostname: String
+)(using ExecutionContext)
+    extends ServerComunicationProtocol:
   given Writer[Color] = Writer.derived
   given Writer[DomoticASW.ActualTypes] with
     def write0[V](out: Visitor[?, V], v: ActualTypes): V =
@@ -45,14 +53,14 @@ class ServerComunicationProtocolHttpAdapter(id: String, name: String, clientPort
   ) derives Writer
 
   case class EventItem(
-    event: String
+      event: String
   ) derives Writer
 
   case class MusicPlayerState(
-    state: String,
-    music: String,
-    minutes: String,
-    musicProgress: Int
+      state: String,
+      music: String,
+      minutes: String,
+      musicProgress: Int
   )
 
   var prevState: Option[MusicPlayerState] = None
@@ -63,8 +71,17 @@ class ServerComunicationProtocolHttpAdapter(id: String, name: String, clientPort
   private def musicMinutes(m: Music, t: Milliseconds) =
     t.toSeconds.toMin.asString + "/" + m.duration.toSeconds.toMin.asString
 
-  private def stateFromMusicAndCurrentTime(s: String, m: Music, t: Milliseconds) =
-    MusicPlayerState(s.toString(), m.name, musicMinutes(m, t), musicProgress(m, t))
+  private def stateFromMusicAndCurrentTime(
+      s: String,
+      m: Music,
+      t: Milliseconds
+  ) =
+    MusicPlayerState(
+      s.toString(),
+      m.name,
+      musicMinutes(m, t),
+      musicProgress(m, t)
+    )
 
   override def sendEvent(address: ServerAddress, e: Event): Future[Unit] =
     println(write(EventItem(e.toString())))
@@ -82,11 +99,14 @@ class ServerComunicationProtocolHttpAdapter(id: String, name: String, clientPort
       )
       .map(_ => ())
 
-  override def updateState(address: ServerAddress, state: MusicState): Future[Unit] =
+  override def updateState(
+      address: ServerAddress,
+      state: MusicState
+  ): Future[Unit] =
     val currentState = state match
       case Playing(m, t) => stateFromMusicAndCurrentTime("Playing", m, t)
-      case Paused(m, t) => stateFromMusicAndCurrentTime("Paused", m, t)
-      case Off(m) => stateFromMusicAndCurrentTime("Off", m, 0.toMs)
+      case Paused(m, t)  => stateFromMusicAndCurrentTime("Paused", m, t)
+      case Off(m)        => stateFromMusicAndCurrentTime("Off", m, 0.toMs)
 
     prevState match
       case Some(prev) if prev == currentState => Future(())
@@ -96,7 +116,7 @@ class ServerComunicationProtocolHttpAdapter(id: String, name: String, clientPort
           UpdatePropertyItem("state", currentState.state),
           UpdatePropertyItem("musics", currentState.music),
           UpdatePropertyItem("minutes", currentState.minutes),
-          UpdatePropertyItem("music-progress", currentState.musicProgress),
+          UpdatePropertyItem("music-progress", currentState.musicProgress)
         )
 
         quickRequest
@@ -117,13 +137,18 @@ class ServerComunicationProtocolHttpAdapter(id: String, name: String, clientPort
   import java.nio.charset.StandardCharsets
   import scala.util.Using
 
-  case class AnnounceMessage(id: String, name: String, port: Int) derives Writer
+  case class AnnounceMessage(
+      id: String,
+      name: String,
+      lanHostname: String,
+      port: Int
+  ) derives Writer
 
   override def announce(): Unit =
     Using(DatagramSocket()): socket =>
       socket.setBroadcast(true)
       val data =
-        write(AnnounceMessage(id, name, clientPort))
+        write(AnnounceMessage(id, name, lanHostname, clientPort))
           .getBytes(StandardCharsets.UTF_8)
       val broadcastAddress = InetAddress.getByName(discoveryBroadcastAddress)
       val packet = new DatagramPacket(

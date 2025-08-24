@@ -88,6 +88,15 @@ object Main extends App:
         case Some(p) => Left(s"Invalid port $p is out of valid port range")
     yield (port)
 
+  def lanHostname: Either[String, String] =
+    for
+      lanHostnameStr <- Right(sys.env.get("LAN_HOSTNAME"))
+      lanHostname <- lanHostnameStr match
+        case None => Left("LAN_HOSTNAME is missing")
+        case Some(value) =>
+          Right(value)
+    yield lanHostname
+
   val config = for
     id <- parse("ID")(default = "music-player")
     name <- parse("NAME")(default = "Music player")
@@ -99,13 +108,15 @@ object Main extends App:
     discoveryBroadcastAddress <- parse("DISCOVERY_BROADCAST_ADDR")(default =
       "255.255.255.255"
     )
+    lanHostname <- lanHostname
     config <- ConfigChecker(id, name, m, ur).left.map(_.message)
   yield (
     config,
     port,
     serverAddress,
     serverDiscoveryPort,
-    discoveryBroadcastAddress
+    discoveryBroadcastAddress,
+    lanHostname
   )
 
   config match
@@ -118,7 +129,8 @@ object Main extends App:
             port,
             serverAddress,
             serverDiscoveryPort,
-            discoveryBroadcastAddress
+            discoveryBroadcastAddress,
+            lanHostname
           )
         ) =>
       val id = config.id
@@ -134,7 +146,8 @@ object Main extends App:
           name,
           clientPort = port,
           announcePort = serverDiscoveryPort,
-          discoveryBroadcastAddress = discoveryBroadcastAddress
+          discoveryBroadcastAddress = discoveryBroadcastAddress,
+          lanHostname = lanHostname
         )(using ec),
         player,
         periodMs = 50,
