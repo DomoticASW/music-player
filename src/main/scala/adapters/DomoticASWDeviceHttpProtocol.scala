@@ -101,6 +101,10 @@ object DomoticASWDeviceHttpInterface:
                   musicPlayerRegistration(musicPlayerAgent)
                 )
               ,
+              (path("unregister") & post):
+                musicPlayerAgent.unregister()
+                complete(StatusCodes.OK)
+              ,
               path("check-status"):
                 complete(StatusCodes.OK)
             )
