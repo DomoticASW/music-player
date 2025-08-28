@@ -172,13 +172,13 @@ object DomoticASWDeviceHttpInterface:
       DeviceAction(
         "change-music",
         "Change music",
-        Some("Change the music to play"),
+        None,
         TypeConstraints.Enum(a.musicPlayer.musics.map(_.name))
       ),
       DeviceAction(
         "set-music-progress",
         "Set music progress",
-        None,
+        Some("The music progress can be changed only if the music player is not in the 'Off' state."),
         TypeConstraints.IntRange(0, 100)
       ),
       DeviceAction(
