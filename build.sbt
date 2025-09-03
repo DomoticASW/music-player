@@ -2,7 +2,7 @@ val scala3Version = "3.7.1"
 
 lazy val root = project
   .in(file("."))
-  .enablePlugins(JavaAppPackaging, DockerPlugin)
+  .enablePlugins(JavaAppPackaging, sbtdocker.DockerPlugin)
   .settings(
     name := "music-player",
     version := sys.env.getOrElse("VERSION", "0.1.0-SNAPSHOT"),
@@ -17,5 +17,8 @@ lazy val root = project
     libraryDependencies += "org.apache.pekko" %% "pekko-actor-typed" % "1.1.3",
     Docker / packageName := "corradostortini2/domoticasw-music-player",
     dockerBaseImage := "openjdk:21",
-    dockerUpdateLatest := true
+    dockerUpdateLatest := true,
+    docker / buildOptions := BuildOptions(
+      platforms = List("linux/arm64", "linux/amd64")
+    )
   )
