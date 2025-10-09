@@ -29,7 +29,7 @@ object DomoticASWDeviceHttpInterface:
   case class BadRequest(cause: String)
   case class NotFound(cause: String)
   case class ExecuteActionBody(input: Option[ActualTypes])
-  case class RegisterBody(serverPort: Int)
+  case class RegisterBody(serverHost: String, serverPort: Int)
 
   def badActionIdMessage(action: String) =
     s"Action \"$action\" not found, known actions are [\"changeMusic\", \"setMusicProgress\", \"play\", \"pause\", \"stop\"]"
@@ -42,7 +42,6 @@ object DomoticASWDeviceHttpInterface:
       .connectionSource()
       .to {
         Sink foreach: conn =>
-          val clientAddress = conn.remoteAddress
           conn.handleWithAsyncHandler:
             concat(
               (path("execute" / Segment) & entity(as[ExecuteActionBody])):
@@ -94,7 +93,7 @@ object DomoticASWDeviceHttpInterface:
               ,
               (path("register") & entity(as[RegisterBody]) & post): body =>
                 musicPlayerAgent.registerToServer(
-                  ServerAddress(clientAddress.getAddress().getHostAddress(), body.serverPort)
+                  ServerAddress(body.serverHost, body.serverPort)
                 )
                 complete(
                   StatusCodes.OK,
@@ -207,7 +206,7 @@ object DomoticASWDeviceHttpInterface:
     import DomoticASWDeviceHttpInterface.*
     given RootJsonFormat[BadRequest] = jsonFormat1(BadRequest.apply)
     given RootJsonFormat[NotFound] = jsonFormat1(NotFound.apply)
-    given RootJsonFormat[RegisterBody] = jsonFormat1(RegisterBody.apply)
+    given RootJsonFormat[RegisterBody] = jsonFormat2(RegisterBody.apply)
 
     given RootJsonFormat[Color] = jsonFormat3(Color.apply)
     given RootJsonFormat[Type] = new RootJsonFormat {
